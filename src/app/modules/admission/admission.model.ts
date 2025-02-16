@@ -21,7 +21,7 @@ const admissionSchema = new Schema<TPAdmission>({
   religion: { type: String },
   residence: { type: String },
   citizenShip: { type: String },
-  allocatedBed: { type: mongoose.Types.ObjectId, ref: "Bed" },
+  allocatedBed: { type: mongoose.Types.ObjectId },
   paymentId: { type: mongoose.Types.ObjectId, ref: "Payment" },
 });
 

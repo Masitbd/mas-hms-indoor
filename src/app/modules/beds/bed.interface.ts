@@ -4,3 +4,10 @@ export type TBeds = {
   fees: number;
   beds: [];
 };
+
+export type TAllocation = {
+  bedName: string;
+  isAllocated: boolean;
+  phone: string;
+  floor: string;
+};

@@ -21,7 +21,7 @@ const paymentSchema = new Schema<TPayments>(
     },
 
     totalAmount: { type: Number, required: true },
-    totalPaid:{type:Number, default:0},
+    totalPaid: { type: Number, default: 0 },
     dueAmount: { type: Number, required: true },
 
     payments: [paymentArray],
@@ -30,18 +30,6 @@ const paymentSchema = new Schema<TPayments>(
     timestamps: true,
   }
 );
-
-// paymentSchema.pre("save", function (next) {
-//   if (!this.isModified("payments")) return next(); // Only recalculate if payments array is modified
-
-//   const totalPaid = this.payments.reduce((acc, payment) => {
-//     return acc + (payment.amount - (payment.discount || 0));
-//   }, 0);
-
-//   this.dueAmount = Math.max(0, this.totalAmount - totalPaid); // Ensure it doesn’t go negative
-
-//   next();
-// });
 
 paymentSchema.pre("save", function (next) {
   if (!this.isModified("payments")) return next(); // Only update if payments array is modified
