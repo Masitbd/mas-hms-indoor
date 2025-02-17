@@ -17,6 +17,10 @@ export type TPAdmission = {
   bloodGroup: string;
   district: string;
   phone: string;
+  status: string;
+  releaseDate: Date;
+  assignDoct: Schema.Types.ObjectId;
+  refDoct: Schema.Types.ObjectId;
   allocatedBed: Schema.Types.ObjectId;
   paymentId: Schema.Types.ObjectId;
 };

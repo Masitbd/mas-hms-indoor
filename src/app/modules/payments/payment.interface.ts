@@ -7,7 +7,7 @@ export type TPaymentArray = {
 };
 
 export type TPayments = {
-  patientId: Schema.Types.ObjectId;
+  patientRegNo: string;
   totalAmount: number;
   totalPaid: number;
   dueAmount: number;

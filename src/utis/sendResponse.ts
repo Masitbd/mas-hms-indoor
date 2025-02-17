@@ -4,7 +4,7 @@ type TResponseData<T> = {
   success: boolean;
   statusCode: number;
   message?: string;
-  data: T | null | undefined;
+  data?: T | null | undefined;
   meta?: {
     page: number;
     limit: number;

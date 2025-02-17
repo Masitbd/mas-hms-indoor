@@ -10,6 +10,8 @@ const admissionSchema = new Schema<TPAdmission>({
   permanentAddress: { type: String },
   age: { type: String },
   bloodGroup: { type: String },
+  status: { type: String, enum: ["admitted", "released"], default: "admitted" },
+  releaseDate: { type: Date },
 
   maritalStatus: {
     type: String,

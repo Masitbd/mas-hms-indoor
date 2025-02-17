@@ -14,9 +14,9 @@ const paymentArray = new Schema<TPaymentArray>(
 
 const paymentSchema = new Schema<TPayments>(
   {
-    patientId: {
-      type: mongoose.Types.ObjectId,
-      ref: "Admission",
+    patientRegNo: {
+      type: String,
+
       required: true,
     },
 
