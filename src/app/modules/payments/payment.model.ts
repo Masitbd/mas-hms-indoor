@@ -1,4 +1,4 @@
-import mongoose, { model, Schema } from "mongoose";
+import { model, Schema } from "mongoose";
 import { TPaymentArray, TPayments } from "./payment.interface";
 
 const paymentArray = new Schema<TPaymentArray>(
@@ -34,12 +34,10 @@ const paymentSchema = new Schema<TPayments>(
 paymentSchema.pre("save", function (next) {
   if (!this.isModified("payments")) return next(); // Only update if payments array is modified
 
-  // Sum up all payments (amount - discount)
   this.totalPaid = this.payments.reduce((acc, payment) => {
     return acc + (payment.amount - (payment.discount || 0));
   }, 0);
 
-  // Calculate remaining due amount
   this.dueAmount = Math.max(0, this.totalAmount - this.totalPaid);
 
   next();
