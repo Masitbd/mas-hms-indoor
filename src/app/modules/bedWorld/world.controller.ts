@@ -35,6 +35,7 @@ const getSingleWorld = catchAsync(async (req, res) => {
 
 const updateWorld = catchAsync(async (req, res) => {
   const { id } = req.params;
+ 
   const result = await worldServices.updateBedWorldIntoDB(id, req.body);
   sendResponse(res, {
     success: true,

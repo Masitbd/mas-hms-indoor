@@ -11,7 +11,7 @@ const createBedIntoDB = async (payload: TBedAllocation) => {
 // get all beds
 
 const getAllBedsFromDB = async () => {
-  const result = await Bed.find();
+  const result = await Bed.find().populate("worldId", "worldName");
   return result;
 };
 
