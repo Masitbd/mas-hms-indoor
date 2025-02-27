@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
-import { TAllocation, TBeds } from "./bed.interface";
-import { Bed } from "./bed.model";
 
-const createBedIntoDB = async (payload: TBeds) => {
+import { Bed } from "./bed.model";
+import { TBedAllocation } from "./bed.interface";
+
+const createBedIntoDB = async (payload: TBedAllocation) => {
   const result = await Bed.create(payload);
   return result;
 };
@@ -27,9 +28,12 @@ const getBedByWorldNameAndAvailablityFromDB = async (id: string) => {
 
 //  update
 
-const updateBedsIntoDB = async (id: string, payload: Partial<TBeds>) => {
-  const { bed, filterBed, ...remainingData } = payload as TBeds & {
-    bed: Partial<TAllocation>;
+const updateBedsIntoDB = async (
+  id: string,
+  payload: Partial<TBedAllocation>
+) => {
+  const { bed, filterBed, ...remainingData } = payload as TBedAllocation & {
+    bed: Partial<TBedAllocation>;
     filterBed?: { _id: string };
   };
 

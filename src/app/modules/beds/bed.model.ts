@@ -1,19 +1,13 @@
 import { model, Schema } from "mongoose";
-import { TBeds } from "./bed.interface";
+import { TBedAllocation } from "./bed.interface";
 
-const allocatBedScheam = new Schema({
-  bedName: { type: String },
-  isAllocated: { type: Boolean, default: false },
-  phone: { type: String },
-  floor: { type: String },
-});
-
-const bedSchema = new Schema<TBeds>(
+const bedSchema = new Schema<TBedAllocation>(
   {
-    worldName: { type: String, required: true, unique: true },
-    charge: { type: Number, required: true },
-    fees: { type: Number, required: true },
-    beds: [allocatBedScheam],
+    bedName: { type: String, required: true, unique: true },
+    isAllocated: { type: Boolean, default: false },
+    phone: { type: String },
+    floor: { type: String },
+    worldId: { type: Schema.Types.ObjectId, ref: "BedWorld" },
   },
   {
     timestamps: true,

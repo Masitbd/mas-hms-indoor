@@ -1,13 +1,9 @@
-export type TBeds = {
-  worldName: string;
-  charge: number;
-  fees: number;
-  beds: [];
-};
+import { Schema } from "mongoose";
 
-export type TAllocation = {
+export type TBedAllocation = {
   bedName: string;
   isAllocated: boolean;
   phone: string;
   floor: string;
+  worldId: Schema.Types.ObjectId;
 };
