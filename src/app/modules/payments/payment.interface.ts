@@ -8,6 +8,7 @@ export type TPaymentArray = {
 
 export type TPayments = {
   patientRegNo: string;
+  transferAmount: number;
   totalAmount: number;
   totalPaid: number;
   dueAmount: number;

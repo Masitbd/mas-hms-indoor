@@ -3,6 +3,7 @@ import sendResponse from "../../../utis/sendResponse";
 import { worldServices } from "./world.service";
 
 const createWorld = catchAsync(async (req, res) => {
+  // console.log(req.body);
   const result = await worldServices.createBedWorldIntoDB(req.body);
   sendResponse(res, {
     success: true,
@@ -35,7 +36,7 @@ const getSingleWorld = catchAsync(async (req, res) => {
 
 const updateWorld = catchAsync(async (req, res) => {
   const { id } = req.params;
- 
+
   const result = await worldServices.updateBedWorldIntoDB(id, req.body);
   sendResponse(res, {
     success: true,

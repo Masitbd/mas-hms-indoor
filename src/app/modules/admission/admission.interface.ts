@@ -18,7 +18,11 @@ export type TPAdmission = {
   district: string;
   phone: string;
   status: string;
-  releaseDate: Date;
+  disease: string;
+  isTransfer: boolean;
+  admissionDate: string;
+  admissionTime: string;
+  releaseDate: string;
   assignDoct: Schema.Types.ObjectId;
   refDoct: Schema.Types.ObjectId;
   allocatedBed: Schema.Types.ObjectId;

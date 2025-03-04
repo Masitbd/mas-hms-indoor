@@ -11,7 +11,11 @@ const admissionSchema = new Schema<TPAdmission>({
   age: { type: String },
   bloodGroup: { type: String },
   status: { type: String, enum: ["admitted", "released"], default: "admitted" },
-  releaseDate: { type: Date },
+  admissionDate: { type: String },
+  admissionTime: { type: String },
+  assignDoct: { type: Schema.Types.ObjectId, ref: "Doctor" },
+  refDoct: { type: Schema.Types.ObjectId, ref: "Doctor" },
+  releaseDate: { type: String },
 
   maritalStatus: {
     type: String,
@@ -23,7 +27,9 @@ const admissionSchema = new Schema<TPAdmission>({
   religion: { type: String },
   residence: { type: String },
   citizenShip: { type: String },
-  allocatedBed: { type: mongoose.Types.ObjectId },
+  disease: { type: String },
+  isTransfer: { type: Boolean },
+  allocatedBed: { type: mongoose.Types.ObjectId, ref: "Bed" },
   paymentId: { type: mongoose.Types.ObjectId, ref: "Payment" },
 });
 

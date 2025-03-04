@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 import { Bed } from "./bed.model";
 import { TBedAllocation } from "./bed.interface";
+import QueryBuilder from "../../builder/QueryBuilder";
 
 const createBedIntoDB = async (payload: TBedAllocation) => {
   const result = await Bed.create(payload);
@@ -10,8 +11,14 @@ const createBedIntoDB = async (payload: TBedAllocation) => {
 
 // get all beds
 
-const getAllBedsFromDB = async () => {
-  const result = await Bed.find().populate("worldId", "worldName");
+const getAllBedsFromDB = async (query: Record<string, any>) => {
+  const bedQuery = new QueryBuilder(
+    Bed.find().populate("worldId", "worldName"),
+    query
+  ).filter();
+
+  const result = await bedQuery.modelQuery;
+
   return result;
 };
 

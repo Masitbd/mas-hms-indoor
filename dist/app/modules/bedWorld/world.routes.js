@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WorldRoutes = void 0;
+const express_1 = require("express");
+const world_controller_1 = require("./world.controller");
+const router = (0, express_1.Router)();
+router.get("/", world_controller_1.worldControllers.getAllWorld);
+router.get("/:id", world_controller_1.worldControllers.getSingleWorld);
+router.post("/", world_controller_1.worldControllers.createWorld);
+router.patch("/:id", world_controller_1.worldControllers.updateWorld);
+router.delete("/:id", world_controller_1.worldControllers.deleteWorld);
+exports.WorldRoutes = router;

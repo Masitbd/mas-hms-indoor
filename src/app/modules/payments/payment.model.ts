@@ -19,7 +19,7 @@ const paymentSchema = new Schema<TPayments>(
 
       required: true,
     },
-
+    transferAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
     totalPaid: { type: Number, default: 0 },
     dueAmount: { type: Number, required: true },
@@ -38,7 +38,10 @@ paymentSchema.pre("save", function (next) {
     return acc + (payment.amount - (payment.discount || 0));
   }, 0);
 
-  this.dueAmount = Math.max(0, this.totalAmount - this.totalPaid);
+  this.dueAmount = Math.max(
+    0,
+    this.totalAmount - (this.totalPaid + this.transferAmount)
+  );
 
   next();
 });

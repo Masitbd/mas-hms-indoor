@@ -15,7 +15,7 @@ const createBed = catchAsync(async (req: Request, res: Response) => {
   });
 });
 const getAllBeds = catchAsync(async (req: Request, res: Response) => {
-  const result = await BedServices.getAllBedsFromDB();
+  const result = await BedServices.getAllBedsFromDB(req.query);
 
   sendResponse(res, {
     success: true,
