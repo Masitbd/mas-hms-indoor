@@ -20,9 +20,9 @@ const paymentSchema = new Schema<TPayments>(
       required: true,
     },
     transferAmount: { type: Number, default: 0 },
-    totalAmount: { type: Number, required: true },
+    totalAmount: { type: Number, required: true, default: 0 },
     totalPaid: { type: Number, default: 0 },
-    dueAmount: { type: Number, required: true },
+    dueAmount: { type: Number, required: true, default: 0 },
 
     payments: [paymentArray],
   },

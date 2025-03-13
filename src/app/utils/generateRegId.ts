@@ -30,7 +30,7 @@ export const generateRegId = async () => {
   const year = date.getFullYear().toString().slice(-2);
   const month = ("0" + (date.getMonth() + 1)).slice(-2);
 
-  const incrementId = (Number(currentId) + 1).toString().padStart(3, "0");
+  const incrementId = (Number(currentId) + 1).toString().padStart(4, "0");
 
   return `${year}${month}${incrementId}`;
 };

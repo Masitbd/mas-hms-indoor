@@ -4,7 +4,7 @@ import { TPAdmission } from "./admission.interface";
 const admissionSchema = new Schema<TPAdmission>({
   regNo: { type: String, required: true, unique: true },
   name: { type: String, required: true },
-  gender: { type: String, enum: ["male", "female", "others"], required: true },
+  gender: { type: String, enum: ["Male", "Female", "Others"], required: true },
   fatherName: { type: String },
   presentAddress: { type: String },
   permanentAddress: { type: String },

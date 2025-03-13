@@ -5,20 +5,41 @@ import { Payment } from "../payments/payment.model";
 import { TPAdmission } from "./admission.interface";
 import { Admission } from "./admission.model";
 
-const createAdmissionIntoDB = async (paylaod: any) => {
-  const regNo = await generateRegId();
+const createAdmissionIntoDB = async (payload: any) => {
+  const session = await mongoose.startSession(); // Start transaction session
+  session.startTransaction();
 
-  const { paymentInfo } = paylaod;
+  try {
+    const regNo = await generateRegId();
 
-  paymentInfo.patientRegNo = regNo;
+    payload.patientRegNo = regNo;
 
-  const createPayment = await Payment.create(paymentInfo);
+    // Ensure isTransfer is a boolean
+    if (payload.isTransfer === "") {
+      payload.isTransfer = false;
+    }
 
-  paylaod.regNo = regNo;
-  paylaod.paymentId = createPayment._id;
+    // Create payment document inside the transaction
+    const createPayment = await Payment.create([{ ...payload }], { session });
 
-  const reuslt = await Admission.create(paylaod);
-  return reuslt;
+    // Attach regNo and paymentId
+    payload.regNo = regNo;
+    payload.paymentId = createPayment[0]._id;
+
+    // Create admission document inside the transaction
+    const result = await Admission.create([{ ...payload }], { session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    return result[0];
+  } catch (error) {
+    // Rollback transaction on failure
+    await session.abortTransaction();
+    session.endSession();
+    throw error; // Ensure the error is propagated
+  }
 };
 
 // ? get single
