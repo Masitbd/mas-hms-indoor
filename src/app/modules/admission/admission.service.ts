@@ -1,9 +1,12 @@
+import { admissonSearchableFields } from "./admission.constance";
 import mongoose from "mongoose";
 import { generateRegId } from "../../utils/generateRegId";
 import { Bed } from "../beds/bed.model";
 import { Payment } from "../payments/payment.model";
 import { TPAdmission } from "./admission.interface";
 import { Admission } from "./admission.model";
+import { query } from "express";
+import QueryBuilder from "../../builder/QueryBuilder";
 
 const createAdmissionIntoDB = async (payload: any) => {
   const session = await mongoose.startSession(); // Start transaction session
@@ -40,6 +43,28 @@ const createAdmissionIntoDB = async (payload: any) => {
     session.endSession();
     throw error; // Ensure the error is propagated
   }
+};
+
+// ? get all admission
+
+const getAllAdmissionFromDB = async (query: Record<string, any>) => {
+  const admissionQuery = new QueryBuilder(
+    Admission.find()
+      .select("regNo name admissionDate admissionTime allocatedBed status")
+      .populate("allocatedBed", "bedName"),
+    query
+  )
+    .search(admissonSearchableFields)
+    .filter()
+    .sort()
+    .paginate();
+
+  const meta = await admissionQuery.countTotal();
+  const result = await admissionQuery.modelQuery;
+  return {
+    meta,
+    result,
+  };
 };
 
 // ? get single
@@ -146,6 +171,7 @@ const deleteAdmissionFromDB = async (id: string) => {
 
 export const AdmissionServices = {
   getAdmissionInfoFromDB,
+  getAllAdmissionFromDB,
   createAdmissionIntoDB,
   updateAdmissonIntoDB,
   deleteAdmissionFromDB,

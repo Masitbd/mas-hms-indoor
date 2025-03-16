@@ -15,8 +15,15 @@ const createAdmission = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// get single
-
+const getAllAdmissionInfo = catchAsync(async (req: Request, res: Response) => {
+  const result = await AdmissionServices.getAllAdmissionFromDB(req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: status.OK,
+    message: "Retrived Succesfully",
+    data: result,
+  });
+});
 const getAdmissionInfo = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await AdmissionServices.getAdmissionInfoFromDB(id);
@@ -50,6 +57,7 @@ const deleteAdmission = catchAsync(async (req: Request, res: Response) => {
 export const AdmissionControllers = {
   createAdmission,
   getAdmissionInfo,
+  getAllAdmissionInfo,
   updteAdmisison,
   deleteAdmission,
 };

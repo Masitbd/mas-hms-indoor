@@ -1,5 +1,13 @@
 import mongoose, { model, Schema } from "mongoose";
-import { TPAdmission } from "./admission.interface";
+import { TPAdmission, TPatientService } from "./admission.interface";
+import { Payment } from "../payments/payment.model";
+
+const patientServiceSchema = new Schema<TPatientService>({
+  serviceCategory: { type: String },
+  seriveId: { type: Schema.Types.ObjectId }, //TODO add ref of servicve model
+  servicedBy: { type: String },
+  amount: { type: Number },
+});
 
 const admissionSchema = new Schema<TPAdmission>({
   regNo: { type: String, required: true, unique: true },
@@ -31,6 +39,19 @@ const admissionSchema = new Schema<TPAdmission>({
   isTransfer: { type: Boolean },
   allocatedBed: { type: mongoose.Types.ObjectId, ref: "Bed" },
   paymentId: { type: mongoose.Types.ObjectId, ref: "Payment" },
+  services: [patientServiceSchema],
+});
+
+admissionSchema.post("save", async function () {
+  const totalAmount = this.services.reduce(
+    (acc, service) => acc + (service.amount || 0),
+    0
+  );
+
+  await Payment.findOneAndUpdate(
+    { patientRegNo: this.regNo },
+    { $set: { totalAmount } }
+  );
 });
 
 export const Admission = model("Admission", admissionSchema);

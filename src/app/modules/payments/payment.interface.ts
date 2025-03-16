@@ -1,4 +1,5 @@
 import { Schema } from "mongoose";
+import { TPatientService } from "../admission/admission.interface";
 
 export type TPaymentArray = {
   amount: number;
@@ -13,4 +14,5 @@ export type TPayments = {
   totalPaid: number;
   dueAmount: number;
   payments: TPaymentArray[];
+  services: [TPatientService];
 };
