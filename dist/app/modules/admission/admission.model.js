@@ -32,20 +32,40 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Admission = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
+const payment_model_1 = require("../payments/payment.model");
+const patientServiceSchema = new mongoose_1.Schema({
+    serviceCategory: { type: String },
+    seriveId: { type: mongoose_1.Schema.Types.ObjectId }, //TODO add ref of servicve model
+    servicedBy: { type: String },
+    amount: { type: Number },
+});
 const admissionSchema = new mongoose_1.Schema({
     regNo: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    gender: { type: String, enum: ["male", "female", "others"], required: true },
+    gender: { type: String, enum: ["Male", "Female", "Others"], required: true },
     fatherName: { type: String },
     presentAddress: { type: String },
     permanentAddress: { type: String },
     age: { type: String },
     bloodGroup: { type: String },
     status: { type: String, enum: ["admitted", "released"], default: "admitted" },
-    releaseDate: { type: Date },
+    admissionDate: { type: String },
+    admissionTime: { type: String },
+    assignDoct: { type: mongoose_1.Schema.Types.ObjectId, ref: "Doctor" },
+    refDoct: { type: mongoose_1.Schema.Types.ObjectId, ref: "Doctor" },
+    releaseDate: { type: String },
     maritalStatus: {
         type: String,
         enum: ["married", "unmarried", "devorced", "single"],
@@ -56,7 +76,16 @@ const admissionSchema = new mongoose_1.Schema({
     religion: { type: String },
     residence: { type: String },
     citizenShip: { type: String },
-    allocatedBed: { type: mongoose_1.default.Types.ObjectId },
+    disease: { type: String },
+    isTransfer: { type: Boolean },
+    allocatedBed: { type: mongoose_1.default.Types.ObjectId, ref: "Bed" },
     paymentId: { type: mongoose_1.default.Types.ObjectId, ref: "Payment" },
+    services: [patientServiceSchema],
+});
+admissionSchema.post("save", function () {
+    return __awaiter(this, void 0, void 0, function* () {
+        const totalAmount = this.services.reduce((acc, service) => acc + (service.amount || 0), 0);
+        yield payment_model_1.Payment.findOneAndUpdate({ patientRegNo: this.regNo }, { $set: { totalAmount } });
+    });
 });
 exports.Admission = (0, mongoose_1.model)("Admission", admissionSchema);

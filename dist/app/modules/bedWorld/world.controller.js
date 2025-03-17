@@ -17,6 +17,7 @@ const catchAsync_1 = __importDefault(require("../../../utis/catchAsync"));
 const sendResponse_1 = __importDefault(require("../../../utis/sendResponse"));
 const world_service_1 = require("./world.service");
 const createWorld = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // console.log(req.body);
     const result = yield world_service_1.worldServices.createBedWorldIntoDB(req.body);
     (0, sendResponse_1.default)(res, {
         success: true,

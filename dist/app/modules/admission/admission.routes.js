@@ -5,6 +5,7 @@ const express_1 = require("express");
 const admission_controller_1 = require("./admission.controller");
 const router = (0, express_1.Router)();
 router.post("/", admission_controller_1.AdmissionControllers.createAdmission);
+router.get("/", admission_controller_1.AdmissionControllers.getAllAdmissionInfo);
 router.get("/:id", admission_controller_1.AdmissionControllers.getAdmissionInfo);
 router.patch("/:id", admission_controller_1.AdmissionControllers.updteAdmisison);
 router.delete("/:id", admission_controller_1.AdmissionControllers.deleteAdmission);

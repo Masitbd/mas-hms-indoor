@@ -75,8 +75,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
       $match: { _id: new mongoose.Types.ObjectId(id) },
     },
 
-    // look up beds info
-
+    // Lookup bed information
     {
       $lookup: {
         from: "beds",
@@ -87,22 +86,74 @@ const getAdmissionInfoFromDB = async (id: string) => {
     },
 
     {
-      $unwind: { path: "bedInfo", preserveNullAndEmptyArrays: true },
+      $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true },
+    },
+
+    // Lookup world information from worldId in bedInfo
+    {
+      $lookup: {
+        from: "bedworlds",
+        localField: "bedInfo.worldId",
+        foreignField: "_id",
+        as: "worldInfo",
+      },
+    },
+
+    {
+      $unwind: { path: "$worldInfo", preserveNullAndEmptyArrays: true },
     },
 
     {
       $addFields: {
         allocatedBedDetails: {
-          $filter: {
-            input: "$bedInfo.beds", // Access the array inside the beds collection
-            as: "bed",
-            cond: { $eq: ["$$bed.isAllocated", true] }, // Get only allocated beds
+          _id: "$bedInfo._id",
+          bedName: "$bedInfo.bedName",
+          isAllocated: "$bedInfo.isAllocated",
+          phone: "$bedInfo.phone",
+          floor: "$bedInfo.floor",
+
+          world: {
+            fees: "$worldInfo.fees",
+            worldName: "$worldInfo.worldName",
+            charge: "$worldInfo.charge",
           },
         },
       },
     },
 
-    // ? payment info
+    // Convert admissionDate and admissionTime to Date format
+    {
+      $addFields: {
+        admissionDateConverted: { $toDate: "$admissionDate" },
+        admissionTimeConverted: { $toDate: "$admissionTime" },
+      },
+    },
+
+    // Calculate the number of full days stayed
+    {
+      $addFields: {
+        daysStayed: {
+          $add: [
+            {
+              $dateDiff: {
+                startDate: "$admissionDateConverted",
+                endDate: "$$NOW",
+                unit: "day",
+              },
+            },
+            {
+              $cond: {
+                if: {
+                  $gte: [{ $hour: "$admissionTimeConverted" }, 12], // Check if admissionTime is >= 12 PM
+                },
+                then: 1,
+                else: 0,
+              },
+            },
+          ],
+        },
+      },
+    },
 
     {
       $lookup: {
@@ -114,30 +165,137 @@ const getAdmissionInfoFromDB = async (id: string) => {
     },
 
     {
-      $unwind: { path: "paymentInfo", preserveNullAndEmptyArrays: true },
+      $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
     },
 
+    {
+      $addFields: {
+        totalAmount: {
+          $add: [
+            { $multiply: ["$daysStayed", "$worldInfo.fees"] },
+            { $ifNull: ["$paymentInfo.totalAmount", 0] },
+          ],
+        },
+      },
+    },
+
+    // Project only necessary fields
     {
       $project: {
         _id: 1,
         allocatedBed: 1,
         paymentId: 1,
-        "bedInfo.worldName": 1,
-        "bedInfo.charge": 1,
-        "bedInfo.fees": 1,
         allocatedBedDetails: 1,
+        totalAmount: 1,
+        daysStayed: 1,
         "paymentInfo._id": 1,
         "paymentInfo.totalAmount": 1,
         "paymentInfo.totalPaid": 1,
         "paymentInfo.dueAmount": 1,
         "paymentInfo.payments": 1,
         "paymentInfo.createdAt": 1,
+        admissionDate: 1,
+        admissionTime: 1,
+        regNo: 1,
+        name: 1,
       },
     },
   ];
 
   const result = await Admission.aggregate(aggregatePipeline);
+  return result;
 };
+
+// const getAdmissionInfoFromDB = async (id: string) => {
+//   const aggregatePipeline = [
+//     {
+//       $match: { _id: new mongoose.Types.ObjectId(id) },
+//     },
+
+//     // Lookup bed information
+//     {
+//       $lookup: {
+//         from: "beds",
+//         localField: "allocatedBed",
+//         foreignField: "_id",
+//         as: "bedInfo",
+//       },
+//     },
+
+//     {
+//       $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true },
+//     },
+
+//     // Lookup world information from worldId in bedInfo
+//     {
+//       $lookup: {
+//         from: "bedworlds",
+//         localField: "bedInfo.worldId",
+//         foreignField: "_id",
+//         as: "worldInfo",
+//       },
+//     },
+
+//     {
+//       $unwind: { path: "$worldInfo", preserveNullAndEmptyArrays: true },
+//     },
+
+//     // Add allocated bed details
+//     {
+//       $addFields: {
+//         allocatedBedDetails: {
+//           _id: "$bedInfo._id",
+//           bedName: "$bedInfo.bedName",
+//           isAllocated: "$bedInfo.isAllocated",
+//           phone: "$bedInfo.phone",
+//           floor: "$bedInfo.floor",
+
+//           world: {
+//             fees: "$worldInfo.fees",
+//             worldName: "$worldInfo.worldName",
+//             charge: "$worldInfo.charge",
+//           },
+//         },
+//       },
+//     },
+
+//     // Lookup payment information
+//     {
+//       $lookup: {
+//         from: "payments",
+//         localField: "paymentId",
+//         foreignField: "_id",
+//         as: "paymentInfo",
+//       },
+//     },
+
+//     {
+//       $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
+//     },
+
+//     // Project only necessary fields
+//     {
+//       $project: {
+//         _id: 1,
+//         allocatedBed: 1,
+//         paymentId: 1,
+//         allocatedBedDetails: 1,
+//         "paymentInfo._id": 1,
+//         "paymentInfo.totalAmount": 1,
+//         "paymentInfo.totalPaid": 1,
+//         "paymentInfo.dueAmount": 1,
+//         "paymentInfo.payments": 1,
+//         "paymentInfo.createdAt": 1,
+//         admissionDate: 1,
+//         regNo: 1,
+//         name: 1,
+//       },
+//     },
+//   ];
+
+//   const result = await Admission.aggregate(aggregatePipeline);
+//   return result;
+// };
 
 // update admission
 

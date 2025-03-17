@@ -26,7 +26,15 @@ const createAdmission = (0, catchAsync_1.default)((req, res) => __awaiter(void 0
         data: result,
     });
 }));
-// get single
+const getAllAdmissionInfo = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield admission_service_1.AdmissionServices.getAllAdmissionFromDB(req.query);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Retrived Succesfully",
+        data: result,
+    });
+}));
 const getAdmissionInfo = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const result = yield admission_service_1.AdmissionServices.getAdmissionInfoFromDB(id);
@@ -59,6 +67,7 @@ const deleteAdmission = (0, catchAsync_1.default)((req, res) => __awaiter(void 0
 exports.AdmissionControllers = {
     createAdmission,
     getAdmissionInfo,
+    getAllAdmissionInfo,
     updteAdmisison,
     deleteAdmission,
 };
