@@ -23,7 +23,7 @@ export const generateRegId = async () => {
   const lastRegId = await findLastRegId();
 
   if (lastRegId) {
-    currentId = lastRegId;
+    currentId = lastRegId.slice(-4);
   }
 
   const date = new Date();

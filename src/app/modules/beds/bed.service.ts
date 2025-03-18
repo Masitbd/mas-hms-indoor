@@ -12,8 +12,11 @@ const createBedIntoDB = async (payload: TBedAllocation) => {
 // get all beds
 
 const getAllBedsFromDB = async (query: Record<string, any>) => {
+  const queryParams =
+    Object.keys(query).length === 0 ? {} : { isAllocated: false };
+
   const bedQuery = new QueryBuilder(
-    Bed.find().populate("worldId", "worldName"),
+    Bed.find(queryParams).populate("worldId", "worldName"),
     query
   ).filter();
 
