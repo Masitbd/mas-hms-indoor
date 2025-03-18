@@ -32,15 +32,18 @@ const paymentSchema = new Schema<TPayments>(
 );
 
 paymentSchema.pre("save", function (next) {
-  if (!this.isModified("payments")) return next(); // Only update if payments array is modified
+  // Check if payments array is modified
+  if (!this.isModified("payments") && !this.isNew) return next();
 
+  // Recalculate totalPaid
   this.totalPaid = this.payments.reduce((acc, payment) => {
     return acc + (payment.amount - (payment.discount || 0));
   }, 0);
 
+  // Recalculate dueAmount
   this.dueAmount = Math.max(
     0,
-    this.totalAmount - (this.totalPaid + this.transferAmount)
+    this.totalAmount - (this.totalPaid + (this.transferAmount || 0))
   );
 
   next();

@@ -39,17 +39,33 @@ const updatePaymentAUserIntoDB = async (
   regNo: string,
   payload: Partial<TPaymentArray>
 ) => {
-  const result = await Payment.findOneAndUpdate(
-    { patientRegNo: regNo },
-    {
-      $addToSet: { payments: payload },
-    },
-    {
-      new: true,
-    }
+  const payment = await Payment.findOne({ patientRegNo: regNo });
+
+  if (!payment) {
+    throw new Error("Payment record not found");
+  }
+
+  payment.payments.push({
+    ...payload,
+    amount: payload.amount || 0,
+    discount: payload.discount || 0,
+  });
+
+  payment.totalPaid = payment.payments.reduce(
+    (acc, payment) => acc + (payment.amount - (payment.discount || 0)),
+    0
   );
 
-  return result;
+  // Recalculate dueAmount
+  payment.dueAmount = Math.max(
+    0,
+    payment.totalAmount - (payment.totalPaid + (payment.transferAmount || 0))
+  );
+
+  // Save the updated document
+  await payment.save();
+
+  return payment;
 };
 
 // export

@@ -24,6 +24,7 @@ export const generateRegId = async () => {
 
   if (lastRegId) {
     currentId = lastRegId.slice(-4);
+    console.log(currentId, "id");
   }
 
   const date = new Date();
