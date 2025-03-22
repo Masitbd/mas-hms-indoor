@@ -14,6 +14,16 @@ const createAdmission = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+const releasePatient = catchAsync(async (req: Request, res: Response) => {
+  const result = await AdmissionServices.realeasePatientFromDB(req.body);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: status.OK,
+    message: "Released Succesfully",
+    data: result,
+  });
+});
 
 const getAllAdmissionInfo = catchAsync(async (req: Request, res: Response) => {
   const result = await AdmissionServices.getAllAdmissionFromDB(req.query);
@@ -56,6 +66,7 @@ const deleteAdmission = catchAsync(async (req: Request, res: Response) => {
 
 export const AdmissionControllers = {
   createAdmission,
+  releasePatient,
   getAdmissionInfo,
   getAllAdmissionInfo,
   updteAdmisison,

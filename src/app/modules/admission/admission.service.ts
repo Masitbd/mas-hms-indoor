@@ -204,6 +204,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
         admissionTime: 1,
         regNo: 1,
         name: 1,
+        status: 1,
       },
     },
   ];
@@ -239,11 +240,43 @@ const deleteAdmissionFromDB = async (id: string) => {
     );
   }
 };
+//
+const realeasePatientFromDB = async (option: { id: string; bedId: string }) => {
+  const { id, bedId } = option;
+  const session = await mongoose.startSession(); // Start transaction session
+  session.startTransaction();
+
+  try {
+    const result = await Admission.findByIdAndUpdate(
+      id,
+      {
+        status: "released",
+        releaseDate: new Date(),
+      },
+      { new: true, session }
+    );
+
+    await Bed.findByIdAndUpdate(
+      bedId,
+      { isAllocated: false },
+      { new: true, session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+    return result;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
 
 export const AdmissionServices = {
   getAdmissionInfoFromDB,
   getAllAdmissionFromDB,
   createAdmissionIntoDB,
+  realeasePatientFromDB,
   updateAdmissonIntoDB,
   deleteAdmissionFromDB,
 };
