@@ -59,7 +59,7 @@ const updatePaymentAUserIntoDB = async (
   // Recalculate dueAmount
   payment.dueAmount = Math.max(
     0,
-    payment.totalAmount - (payment.totalPaid + (payment.transferAmount || 0))
+    payment.totalAmount - (payment.totalPaid || 0)
   );
 
   // Save the updated document

@@ -27,7 +27,8 @@ const generateRegId = () => __awaiter(void 0, void 0, void 0, function* () {
     let currentId = "0";
     const lastRegId = yield findLastRegId();
     if (lastRegId) {
-        currentId = lastRegId;
+        currentId = lastRegId.slice(-4);
+        console.log(currentId, "id");
     }
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);

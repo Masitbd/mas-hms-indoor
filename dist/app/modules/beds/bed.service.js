@@ -33,7 +33,8 @@ const createBedIntoDB = (payload) => __awaiter(void 0, void 0, void 0, function*
 });
 // get all beds
 const getAllBedsFromDB = (query) => __awaiter(void 0, void 0, void 0, function* () {
-    const bedQuery = new QueryBuilder_1.default(bed_model_1.Bed.find().populate("worldId", "worldName"), query).filter();
+    const queryParams = Object.keys(query).length === 0 ? {} : { isAllocated: false };
+    const bedQuery = new QueryBuilder_1.default(bed_model_1.Bed.find(queryParams).populate("worldId", "worldName"), query).filter();
     const result = yield bedQuery.modelQuery;
     return result;
 });

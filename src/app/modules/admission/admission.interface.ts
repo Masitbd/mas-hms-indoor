@@ -28,6 +28,7 @@ export type TPAdmission = {
   disease: string;
   isTransfer: boolean;
   admissionDate: string;
+  firstAdmitDate: string;
   admissionTime: string;
   releaseDate: string;
   assignDoct: Schema.Types.ObjectId;

@@ -26,6 +26,15 @@ const createAdmission = (0, catchAsync_1.default)((req, res) => __awaiter(void 0
         data: result,
     });
 }));
+const releasePatient = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield admission_service_1.AdmissionServices.realeasePatientFromDB(req.body);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Released Succesfully",
+        data: result,
+    });
+}));
 const getAllAdmissionInfo = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield admission_service_1.AdmissionServices.getAllAdmissionFromDB(req.query);
     (0, sendResponse_1.default)(res, {
@@ -55,6 +64,15 @@ const updteAdmisison = (0, catchAsync_1.default)((req, res) => __awaiter(void 0,
         data: result,
     });
 }));
+const transferPatientBed = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield admission_service_1.AdmissionServices.transferPatientBedFromDB(req.body);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Transferred Succesfully",
+        data: result,
+    });
+}));
 const deleteAdmission = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     yield admission_service_1.AdmissionServices.deleteAdmissionFromDB(id);
@@ -66,8 +84,10 @@ const deleteAdmission = (0, catchAsync_1.default)((req, res) => __awaiter(void 0
 }));
 exports.AdmissionControllers = {
     createAdmission,
+    releasePatient,
     getAdmissionInfo,
     getAllAdmissionInfo,
     updteAdmisison,
+    transferPatientBed,
     deleteAdmission,
 };

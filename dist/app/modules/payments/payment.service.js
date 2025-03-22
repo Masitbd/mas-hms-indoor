@@ -41,12 +41,17 @@ const getAllPayementInfoWithPatientInfoFromDB = () => __awaiter(void 0, void 0, 
 });
 // ? update a patient payment ==
 const updatePaymentAUserIntoDB = (regNo, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield payment_model_1.Payment.findOneAndUpdate({ patientRegNo: regNo }, {
-        $addToSet: { payments: payload },
-    }, {
-        new: true,
-    });
-    return result;
+    const payment = yield payment_model_1.Payment.findOne({ patientRegNo: regNo });
+    if (!payment) {
+        throw new Error("Payment record not found");
+    }
+    payment.payments.push(Object.assign(Object.assign({}, payload), { amount: payload.amount || 0, discount: payload.discount || 0 }));
+    payment.totalPaid = payment.payments.reduce((acc, payment) => acc + (payment.amount - (payment.discount || 0)), 0);
+    // Recalculate dueAmount
+    payment.dueAmount = Math.max(0, payment.totalAmount - (payment.totalPaid || 0));
+    // Save the updated document
+    yield payment.save();
+    return payment;
 });
 // export
 exports.PaymentServices = {

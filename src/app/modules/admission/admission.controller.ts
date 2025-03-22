@@ -44,6 +44,7 @@ const getAdmissionInfo = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+
 const updteAdmisison = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await AdmissionServices.updateAdmissonIntoDB(id, req.body);
@@ -54,6 +55,17 @@ const updteAdmisison = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+
+const transferPatientBed = catchAsync(async (req: Request, res: Response) => {
+  const result = await AdmissionServices.transferPatientBedFromDB(req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: status.OK,
+    message: "Transferred Succesfully",
+    data: result,
+  });
+});
+
 const deleteAdmission = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   await AdmissionServices.deleteAdmissionFromDB(id);
@@ -70,5 +82,6 @@ export const AdmissionControllers = {
   getAdmissionInfo,
   getAllAdmissionInfo,
   updteAdmisison,
+  transferPatientBed,
   deleteAdmission,
 };

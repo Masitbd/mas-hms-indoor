@@ -54,13 +54,21 @@ const patientServiceSchema = new mongoose_1.Schema({
 const admissionSchema = new mongoose_1.Schema({
     regNo: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    gender: { type: String, enum: ["Male", "Female", "Others"], required: true },
+    gender: {
+        type: String,
+        enum: ["Male", "Female", "Others"],
+        required: true,
+    },
     fatherName: { type: String },
     presentAddress: { type: String },
     permanentAddress: { type: String },
     age: { type: String },
     bloodGroup: { type: String },
-    status: { type: String, enum: ["admitted", "released"], default: "admitted" },
+    status: {
+        type: String,
+        enum: ["admitted", "released"],
+        default: "admitted",
+    },
     admissionDate: { type: String },
     admissionTime: { type: String },
     assignDoct: { type: mongoose_1.Schema.Types.ObjectId, ref: "Doctor" },
@@ -68,7 +76,6 @@ const admissionSchema = new mongoose_1.Schema({
     releaseDate: { type: String },
     maritalStatus: {
         type: String,
-        enum: ["married", "unmarried", "devorced", "single"],
     },
     occupation: { type: String },
     education: { type: String },
@@ -78,9 +85,12 @@ const admissionSchema = new mongoose_1.Schema({
     citizenShip: { type: String },
     disease: { type: String },
     isTransfer: { type: Boolean },
+    firstAdmitDate: { type: String },
     allocatedBed: { type: mongoose_1.default.Types.ObjectId, ref: "Bed" },
     paymentId: { type: mongoose_1.default.Types.ObjectId, ref: "Payment" },
     services: [patientServiceSchema],
+}, {
+    timestamps: true,
 });
 admissionSchema.post("save", function () {
     return __awaiter(this, void 0, void 0, function* () {

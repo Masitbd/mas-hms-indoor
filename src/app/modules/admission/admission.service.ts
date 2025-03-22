@@ -205,6 +205,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
         regNo: 1,
         name: 1,
         status: 1,
+        isTransfer: 1,
       },
     },
   ];
@@ -251,7 +252,7 @@ const realeasePatientFromDB = async (option: { id: string; bedId: string }) => {
       id,
       {
         status: "released",
-        releaseDate: new Date(),
+        releaseDate: new Date().toISOString(),
       },
       { new: true, session }
     );
@@ -271,6 +272,78 @@ const realeasePatientFromDB = async (option: { id: string; bedId: string }) => {
     throw error;
   }
 };
+//
+
+type TTransfer = {
+  previousBed: string;
+  allocatedBed: string;
+  isTransfer: boolean;
+  admissionDate: string;
+  admissionTime: string;
+  firstAdmitDate: string;
+  totalAmount: number;
+  patientRegNo: string;
+};
+
+const transferPatientBedFromDB = async (payload: TTransfer) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const previousAdmission = await Admission.findOneAndUpdate(
+      { regNo: payload.patientRegNo },
+      {
+        allocatedBed: payload.allocatedBed,
+        isTransfer: true,
+        admissionDate: new Date().toISOString(),
+        admissionTime: new Date().toISOString(),
+        firstAdmitDate: payload.admissionDate,
+      },
+      { new: true, session }
+    );
+
+    await Bed.findByIdAndUpdate(
+      payload.previousBed,
+      { isAllocated: false },
+      {
+        new: true,
+        session,
+      }
+    );
+
+    await Payment.findOneAndUpdate(
+      { patientRegNo: payload.patientRegNo },
+      [
+        {
+          $set: {
+            totalAmount: payload.totalAmount,
+            dueAmount: {
+              $max: [
+                0,
+                {
+                  $subtract: [
+                    payload.totalAmount,
+                    { $ifNull: ["$totalPaid", 0] },
+                  ],
+                },
+              ],
+            },
+            transferAmount: payload.totalAmount,
+          },
+        },
+      ],
+      { new: true, session }
+    );
+
+    await session.commitTransaction();
+    await session.endSession();
+    return previousAdmission;
+  } catch (error) {
+    await session.abortTransaction();
+    await session.endSession();
+    throw error;
+  }
+};
 
 export const AdmissionServices = {
   getAdmissionInfoFromDB,
@@ -278,5 +351,6 @@ export const AdmissionServices = {
   createAdmissionIntoDB,
   realeasePatientFromDB,
   updateAdmissonIntoDB,
+  transferPatientBedFromDB,
   deleteAdmissionFromDB,
 };

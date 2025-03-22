@@ -36,7 +36,6 @@ const admissionSchema = new Schema<TPAdmission>(
 
     maritalStatus: {
       type: String,
-      enum: ["married", "unmarried", "devorced", "single"],
     },
     occupation: { type: String },
     education: { type: String },
@@ -46,6 +45,7 @@ const admissionSchema = new Schema<TPAdmission>(
     citizenShip: { type: String },
     disease: { type: String },
     isTransfer: { type: Boolean },
+    firstAdmitDate: { type: String },
     allocatedBed: { type: mongoose.Types.ObjectId, ref: "Bed" },
     paymentId: { type: mongoose.Types.ObjectId, ref: "Payment" },
     services: [patientServiceSchema],
