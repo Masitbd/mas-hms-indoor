@@ -6,6 +6,7 @@ const payment_routes_1 = require("../modules/payments/payment.routes");
 const world_routes_1 = require("../modules/bedWorld/world.routes");
 const bed_routes_1 = require("../modules/beds/bed.routes");
 const packageItem_routes_1 = require("../modules/packageItem/packageItem.routes");
+const desease_routes_1 = require("../modules/desease/desease.routes");
 const router = (0, express_1.Router)();
 const modules = [
     { path: "/worlds", module: world_routes_1.WorldRoutes },
@@ -13,6 +14,7 @@ const modules = [
     { path: "/admission", module: admission_routes_1.AdmissionRoutes },
     { path: "/payments", module: payment_routes_1.PaymentRoutes },
     { path: "/packages", module: packageItem_routes_1.packageRoutes },
+    { path: "/desease", module: desease_routes_1.DeseaseRoutes },
 ];
 modules.forEach((route) => {
     router.use(route.path, route.module);

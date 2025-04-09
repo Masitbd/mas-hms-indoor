@@ -5,6 +5,7 @@ import { PaymentRoutes } from "../modules/payments/payment.routes";
 import { WorldRoutes } from "../modules/bedWorld/world.routes";
 import { BedRoutes } from "../modules/beds/bed.routes";
 import { packageRoutes } from "../modules/packageItem/packageItem.routes";
+import { DeseaseRoutes } from "../modules/desease/desease.routes";
 
 const router = Router();
 
@@ -14,6 +15,7 @@ const modules = [
   { path: "/admission", module: AdmissionRoutes },
   { path: "/payments", module: PaymentRoutes },
   { path: "/packages", module: packageRoutes },
+  { path: "/desease", module: DeseaseRoutes },
 ];
 
 modules.forEach((route) => {

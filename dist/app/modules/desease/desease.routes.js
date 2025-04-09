@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DeseaseRoutes = void 0;
+const express_1 = require("express");
+const desease_controller_1 = require("./desease.controller");
+const router = (0, express_1.Router)();
+router.post("/", desease_controller_1.deseaseController.createDesease);
+router.get("/", desease_controller_1.deseaseController.getAllDesease);
+router.patch("/:id", desease_controller_1.deseaseController.updateDesease);
+router.delete("/:id", desease_controller_1.deseaseController.deleteDesease);
+exports.DeseaseRoutes = router;
