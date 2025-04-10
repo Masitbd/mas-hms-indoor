@@ -7,6 +7,20 @@ import { TPAdmission } from "./admission.interface";
 import { Admission } from "./admission.model";
 
 import QueryBuilder from "../../builder/QueryBuilder";
+import { TransferBed } from "../bedTransfer/bedTansfer.model";
+
+type TTransfer = {
+  previousBed: string;
+  allocatedBed: string;
+  isTransfer: boolean;
+  admissionDate: string;
+  admissionTime: string;
+  firstAdmitDate: string;
+  totalAmount: number;
+  patientRegNo: string;
+  id: string;
+  dayStayed: number;
+};
 
 const createAdmissionIntoDB = async (payload: any) => {
   const session = await mongoose.startSession(); // Start transaction session
@@ -274,18 +288,16 @@ const realeasePatientFromDB = async (option: { id: string; bedId: string }) => {
 };
 //
 
-type TTransfer = {
-  previousBed: string;
-  allocatedBed: string;
-  isTransfer: boolean;
-  admissionDate: string;
-  admissionTime: string;
-  firstAdmitDate: string;
-  totalAmount: number;
-  patientRegNo: string;
-};
-
 const transferPatientBedFromDB = async (payload: TTransfer) => {
+  const {
+    previousBed,
+    allocatedBed,
+    admissionDate,
+    dayStayed,
+    id,
+    totalAmount,
+  } = payload;
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -334,6 +346,19 @@ const transferPatientBedFromDB = async (payload: TTransfer) => {
       ],
       { new: true, session }
     );
+
+    // transfer info add
+
+    const transferBedInfo = {
+      patientId: id,
+      previousBed,
+      newBed: allocatedBed,
+      admissionDate,
+      totalAmount,
+      dayStayed,
+    };
+
+    await TransferBed.create([transferBedInfo], { session });
 
     await session.commitTransaction();
     await session.endSession();
