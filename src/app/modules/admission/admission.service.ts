@@ -63,7 +63,7 @@ const createAdmissionIntoDB = async (payload: any) => {
 
 const getAllAdmissionFromDB = async (query: Record<string, any>) => {
   const admissionQuery = new QueryBuilder(
-    Admission.find()
+    Admission.find({ status: "admitted" })
       .select("regNo name admissionDate admissionTime allocatedBed status")
       .populate("allocatedBed", "bedName"),
     query
@@ -188,6 +188,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
           $cond: {
             if: { $eq: ["$daysStayed", 0] },
             then: "$worldInfo.charge",
+
             else: {
               $add: [
                 { $multiply: ["$daysStayed", "$worldInfo.fees"] },
@@ -196,6 +197,15 @@ const getAdmissionInfoFromDB = async (id: string) => {
             },
           },
         },
+      },
+    },
+
+    {
+      $lookup: {
+        from: "transferbeds",
+        localField: "tranferInfo",
+        foreignField: "_id",
+        as: "transferInfo",
       },
     },
 
@@ -220,6 +230,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
         name: 1,
         status: 1,
         isTransfer: 1,
+        transferInfo: 1,
       },
     },
   ];
@@ -302,6 +313,22 @@ const transferPatientBedFromDB = async (payload: TTransfer) => {
   session.startTransaction();
 
   try {
+    const transferInfo = await TransferBed.findOneAndUpdate(
+      { patientId: id },
+      {
+        $push: {
+          transferInfo: {
+            previousBed,
+            newBed: allocatedBed,
+            admissionDate,
+            totalAmount,
+            dayStayed,
+          },
+        },
+      },
+      { upsert: true, new: true, session }
+    );
+
     const previousAdmission = await Admission.findOneAndUpdate(
       { regNo: payload.patientRegNo },
       {
@@ -310,6 +337,7 @@ const transferPatientBedFromDB = async (payload: TTransfer) => {
         admissionDate: new Date().toISOString(),
         admissionTime: new Date().toISOString(),
         firstAdmitDate: payload.admissionDate,
+        tranferInfo: transferInfo?._id,
       },
       { new: true, session }
     );
@@ -348,17 +376,6 @@ const transferPatientBedFromDB = async (payload: TTransfer) => {
     );
 
     // transfer info add
-
-    const transferBedInfo = {
-      patientId: id,
-      previousBed,
-      newBed: allocatedBed,
-      admissionDate,
-      totalAmount,
-      dayStayed,
-    };
-
-    await TransferBed.create([transferBedInfo], { session });
 
     await session.commitTransaction();
     await session.endSession();

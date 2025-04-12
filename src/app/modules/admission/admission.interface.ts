@@ -27,6 +27,7 @@ export type TPAdmission = {
   status: string;
   disease: string;
   isTransfer: boolean;
+  tranferInfo: Schema.Types.ObjectId;
   admissionDate: string;
   firstAdmitDate: string;
   admissionTime: string;
@@ -36,4 +37,5 @@ export type TPAdmission = {
   allocatedBed: Schema.Types.ObjectId;
   paymentId: Schema.Types.ObjectId;
   services: [TPatientService];
+  fixedBill: Schema.Types.ObjectId;
 };

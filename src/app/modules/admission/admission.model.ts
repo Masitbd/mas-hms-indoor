@@ -45,10 +45,12 @@ const admissionSchema = new Schema<TPAdmission>(
     citizenShip: { type: String },
     disease: { type: String },
     isTransfer: { type: Boolean },
+    tranferInfo: { type: Schema.Types.ObjectId },
     firstAdmitDate: { type: String },
     allocatedBed: { type: mongoose.Types.ObjectId, ref: "Bed" },
     paymentId: { type: mongoose.Types.ObjectId, ref: "Payment" },
     services: [patientServiceSchema],
+    fixedBill: { type: Schema.Types.ObjectId, ref: "PackageItem" },
   },
   {
     timestamps: true,
