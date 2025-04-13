@@ -1,5 +1,6 @@
 import { PipelineStage } from "mongoose";
 import { Payment } from "../payments/payment.model";
+import { Admission } from "../admission/admission.model";
 
 const getPaymentStatementGroupedByDateAndReceiver = async (
   payload: Record<string, any>
@@ -189,6 +190,99 @@ const getIndoorIncomeStatementFromDB = async (payload: Record<string, any>) => {
   ];
 
   const result = await Payment.aggregate(pipeline);
+  return result;
+};
+
+const getDueStatementFromDB = async (query: Record<string, any>) => {
+  const startDate = query.startDate ? new Date(query.startDate) : new Date();
+  const endDate = query.endDate ? new Date(query.endDate) : new Date();
+
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+
+  const pipeLine: PipelineStage[] = [
+    {
+      $match: {
+        createdAt: {
+          $gte: startDate,
+          $lte: endDate,
+        },
+      },
+    },
+
+    {
+      $addFields: {
+        paymentDate: {
+          $dateToString: { format: "%Y-%m-%d", date: "$payments.createdAt" },
+        },
+      },
+    },
+
+    {
+      $lookup: {
+        from: "payments",
+        localField: "patientRegNo",
+        foreignField: "regNo",
+        as: "paymentInfo",
+      },
+    },
+
+    {
+      $unwind: {
+        path: "$paymentInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+
+    {
+      $lookup: {
+        from: "beds",
+        localField: "allocatedBed",
+        foreignField: "_id",
+        as: "bedInfo",
+      },
+    },
+    {
+      $unwind: {
+        path: "$bedInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "assignDoct",
+        foreignField: "_id",
+        as: "doctInfo",
+      },
+    },
+    {
+      $unwind: {
+        path: "$doctInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+
+    {
+      $group: {
+        _id: "$paymentDate",
+        payments: {
+          $push: {
+            regNo: "$regNo",
+            name: "$name",
+            admisssionDate: "$admisssionDate",
+            releaseDate: "$releaseDate",
+            bedName: "$bedInfo.name",
+            doctName: "$doctInfo.name",
+          },
+        },
+      },
+    },
+
+    //
+  ];
+
+  const result = await Admission.aggregate(pipeLine);
   return result;
 };
 
