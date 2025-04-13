@@ -5,6 +5,8 @@ export type TPaymentArray = {
   amount: number;
   discount?: number;
   disCountBy?: string;
+  purpose?: string;
+  receivedBy: Schema.Types.ObjectId;
 };
 
 export type TPayments = {
