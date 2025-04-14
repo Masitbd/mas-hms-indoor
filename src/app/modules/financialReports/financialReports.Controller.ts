@@ -19,6 +19,22 @@ const getPaymentBydateAndreceiver = catchAsync(
   }
 );
 
+//
+
+const getDueStatement = catchAsync(async (req: Request, res: Response) => {
+  const result = await financialReportsServices.getDueStatementFromDB(
+    req.query
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    data: result,
+    message: "Retrived Indoor Due details",
+  });
+});
+
 export const financialReportsControllers = {
   getPaymentBydateAndreceiver,
+  getDueStatement,
 };

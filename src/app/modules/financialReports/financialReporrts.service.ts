@@ -212,28 +212,41 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
 
     {
       $addFields: {
+        admissionDateConverted: { $toDate: "$admissionDate" },
+        admissionTimeConverted: { $toDate: "$admissionTime" },
         paymentDate: {
-          $dateToString: { format: "%Y-%m-%d", date: "$payments.createdAt" },
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
         },
       },
     },
 
+    // Calculate the number of full days stayed
     {
-      $lookup: {
-        from: "payments",
-        localField: "patientRegNo",
-        foreignField: "regNo",
-        as: "paymentInfo",
+      $addFields: {
+        daysStayed: {
+          $add: [
+            {
+              $dateDiff: {
+                startDate: "$admissionDateConverted",
+                endDate: "$$NOW",
+                unit: "day",
+              },
+            },
+            {
+              $cond: {
+                if: {
+                  $gte: [{ $hour: "$admissionTimeConverted" }, 12],
+                },
+                then: 1,
+                else: 0,
+              },
+            },
+          ],
+        },
       },
     },
 
-    {
-      $unwind: {
-        path: "$paymentInfo",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-
+    // Lookup related collections
     {
       $lookup: {
         from: "beds",
@@ -262,24 +275,98 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         preserveNullAndEmptyArrays: true,
       },
     },
+    {
+      $lookup: {
+        from: "bedworlds",
+        localField: "bedInfo.worldId",
+        foreignField: "_id",
+        as: "worldInfo",
+      },
+    },
+    {
+      $unwind: {
+        path: "$worldInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
 
     {
-      $group: {
-        _id: "$paymentDate",
-        payments: {
-          $push: {
-            regNo: "$regNo",
-            name: "$name",
-            admisssionDate: "$admisssionDate",
-            releaseDate: "$releaseDate",
-            bedName: "$bedInfo.name",
-            doctName: "$doctInfo.name",
+      $lookup: {
+        from: "payments",
+        let: { regNo: "$patientRegNo" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$regNo", "$$regNo"] } } },
+          { $group: { _id: null, totalPaid: { $sum: "$totalPaid" } } },
+        ],
+        as: "paymentsSum",
+      },
+    },
+    {
+      $addFields: {
+        totalPaid: {
+          $cond: {
+            if: { $gt: [{ $size: "$paymentsSum" }, 0] },
+            then: { $arrayElemAt: ["$paymentsSum.totalPaid", 0] },
+            else: 0,
           },
         },
       },
     },
 
-    //
+    {
+      $addFields: {
+        totalAmount: {
+          $cond: {
+            if: { $eq: ["$daysStayed", 0] },
+            then: "$worldInfo.charge",
+            else: {
+              $add: [
+                { $multiply: ["$daysStayed", "$worldInfo.fees"] },
+                "$worldInfo.charge", // Add the initial charge
+              ],
+            },
+          },
+        },
+      },
+    },
+
+    // Calculate due amount
+    {
+      $addFields: {
+        dueAmount: { $subtract: ["$totalAmount", "$totalPaid"] },
+      },
+    },
+
+    // Filter only due cases
+    {
+      $match: {
+        dueAmount: { $gt: 0 },
+      },
+    },
+
+    // Group by payment date
+    {
+      $group: {
+        _id: "$paymentDate",
+        payments: {
+          $push: {
+            date: "$_id",
+            regNo: "$regNo", // Changed from regNo to patientRegNo based on your schema
+            name: "$name",
+            admisssionDate: "$admissionDate",
+            releaseDate: "$releaseDate",
+            bedName: "$bedInfo.bedName",
+            doctName: "$doctInfo.name",
+            totalPaid: "$totalPaid",
+            totalAmount: "$totalAmount",
+            dueAmount: "$dueAmount",
+          },
+        },
+      },
+    },
+
+    // Sort by date if needed
+    { $sort: { _id: -1 } },
   ];
 
   const result = await Admission.aggregate(pipeLine);
@@ -288,4 +375,5 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
 
 export const financialReportsServices = {
   getPaymentStatementGroupedByDateAndReceiver,
+  getDueStatementFromDB,
 };
