@@ -34,8 +34,28 @@ const createAdmissionIntoDB = async (payload: any) => {
     if (payload.isTransfer === "") {
       payload.isTransfer = false;
     }
+    const paymentPayload: any = {
+      patientRegNo: regNo,
+      totalAmount: payload.totalAmount || 0,
+      payments: [
+        {
+          amount: payload.paid || 0,
+          discount: payload.discount || 0,
+          disCountBy: payload.disCountBy || "",
+          receivedBy: payload.receivedBy,
+        },
+      ],
+    };
 
-    const createPayment = await Payment.create([{ ...payload }], { session });
+    paymentPayload.totalPaid =
+      (paymentPayload.payments[0].amount || 0) -
+      (paymentPayload.payments[0].discount || 0);
+
+    paymentPayload.dueAmount = Math.max(
+      0,
+      paymentPayload.totalAmount - paymentPayload.totalPaid
+    );
+    const createPayment = await Payment.create([paymentPayload], { session });
 
     payload.regNo = regNo;
     payload.paymentId = createPayment[0]._id;

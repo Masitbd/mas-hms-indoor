@@ -10,6 +10,7 @@ const paymentArray = new Schema<TPaymentArray>(
     receivedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   {
+    _id: false,
     timestamps: true,
   }
 );
@@ -20,6 +21,7 @@ const paymentSchema = new Schema<TPayments>(
       type: String,
 
       required: true,
+      index: true,
     },
     transferAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true, default: 0 },

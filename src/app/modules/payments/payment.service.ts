@@ -46,13 +46,15 @@ const updatePaymentAUserIntoDB = async (
   }
 
   payment.payments.push({
-    ...payload,
     amount: payload.amount || 0,
     discount: payload.discount || 0,
+    purpose: payload.purpose,
+    disCountBy: payload.disCountBy || "",
+    receivedBy: payload.receivedBy,
   });
 
   payment.totalPaid = payment.payments.reduce(
-    (acc, payment) => acc + (payment.amount - (payment.discount || 0)),
+    (acc, payment) => acc + (payment.amount - (payment.discount ?? 0)),
     0
   );
 
