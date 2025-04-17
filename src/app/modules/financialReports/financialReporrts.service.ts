@@ -209,7 +209,6 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         },
       },
     },
-
     {
       $addFields: {
         admissionDateConverted: { $toDate: "$admissionDate" },
@@ -219,7 +218,6 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         },
       },
     },
-
     // Calculate the number of full days stayed
     {
       $addFields: {
@@ -245,7 +243,6 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         },
       },
     },
-
     // Lookup related collections
     {
       $lookup: {
@@ -289,30 +286,32 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         preserveNullAndEmptyArrays: true,
       },
     },
-
+    // Lookup payment information using the payment document directly
     {
       $lookup: {
         from: "payments",
-        let: { regNo: "$patientRegNo" },
+        let: { patientRegNo: "$regNo" },
         pipeline: [
-          { $match: { $expr: { $eq: ["$regNo", "$$regNo"] } } },
-          { $group: { _id: null, totalPaid: { $sum: "$totalPaid" } } },
+          {
+            $match: { $expr: { $eq: ["$patientRegNo", "$$patientRegNo"] } },
+          },
         ],
-        as: "paymentsSum",
+        as: "paymentDoc",
       },
     },
     {
-      $addFields: {
-        totalPaid: {
-          $cond: {
-            if: { $gt: [{ $size: "$paymentsSum" }, 0] },
-            then: { $arrayElemAt: ["$paymentsSum.totalPaid", 0] },
-            else: 0,
-          },
-        },
+      $unwind: {
+        path: "$paymentDoc",
+        preserveNullAndEmptyArrays: true,
       },
     },
-
+    // Use the totalPaid field directly from the payment document
+    {
+      $addFields: {
+        totalPaid: { $ifNull: ["$paymentDoc.totalPaid", 0] },
+      },
+    },
+    // Calculate total amount based on days stayed
     {
       $addFields: {
         totalAmount: {
@@ -322,28 +321,25 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
             else: {
               $add: [
                 { $multiply: ["$daysStayed", "$worldInfo.fees"] },
-                "$worldInfo.charge", // Add the initial charge
+                "$worldInfo.charge",
               ],
             },
           },
         },
       },
     },
-
     // Calculate due amount
     {
       $addFields: {
         dueAmount: { $subtract: ["$totalAmount", "$totalPaid"] },
       },
     },
-
     // Filter only due cases
     {
       $match: {
         dueAmount: { $gt: 0 },
       },
     },
-
     // Group by payment date
     {
       $group: {
@@ -351,10 +347,10 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         payments: {
           $push: {
             date: "$_id",
-            regNo: "$regNo", // Changed from regNo to patientRegNo based on your schema
+            regNo: "$regNo",
             name: "$name",
             admisssionDate: "$admissionDate",
-            releaseDate: "$releaseDate",
+            releaseDate: { $ifNull: ["$releaseDate", ""] },
             bedName: "$bedInfo.bedName",
             doctName: "$doctInfo.name",
             totalPaid: "$totalPaid",
@@ -364,7 +360,6 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         },
       },
     },
-
     // Sort by date if needed
     { $sort: { _id: -1 } },
   ];
