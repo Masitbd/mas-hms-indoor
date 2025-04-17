@@ -6,9 +6,7 @@ import sendResponse from "../../../utis/sendResponse";
 const getPaymentBydateAndreceiver = catchAsync(
   async (req: Request, res: Response) => {
     const result =
-      await financialReportsServices.getPaymentStatementGroupedByDateAndReceiver(
-        req.query
-      );
+      await financialReportsServices.getIndoorIncomeStatementFromDB(req.query);
 
     sendResponse(res, {
       statusCode: 200,

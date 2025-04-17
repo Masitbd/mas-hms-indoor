@@ -2,89 +2,141 @@ import { PipelineStage } from "mongoose";
 import { Payment } from "../payments/payment.model";
 import { Admission } from "../admission/admission.model";
 
-const getPaymentStatementGroupedByDateAndReceiver = async (
-  payload: Record<string, any>
-) => {
-  const startDate = payload.startDate
-    ? new Date(payload.startDate)
-    : new Date();
-  const endDate = payload.endDate ? new Date(payload.endDate) : new Date();
+const getIndoorIncomeStatementFromDB = async (query: Record<string, any>) => {
+  const startDate = query.startDate ? new Date(query.startDate) : new Date();
+  const endDate = query.endDate ? new Date(query.endDate) : new Date();
 
   startDate.setHours(0, 0, 0, 0);
   endDate.setHours(23, 59, 59, 999);
 
   const pipeline: PipelineStage[] = [
+    // 1. Unwind payments to process individually
+    { $unwind: "$payments" },
+
+    // 2. Filter by date range
     {
       $match: {
-        createdAt: {
+        "payments.createdAt": {
           $gte: startDate,
           $lte: endDate,
         },
       },
     },
-    {
-      $unwind: "$payments",
-    },
-    {
-      $match: {
-        "payments.receivedBy": { $ne: null }, // Optional: only include payments with receiver
-      },
-    },
+
+    // 3. Add formatted payment date
     {
       $addFields: {
         paymentDate: {
           $dateToString: { format: "%Y-%m-%d", date: "$payments.createdAt" },
         },
+        paymentAmount: "$payments.amount",
+        paymentDiscount: "$payments.discount",
+        patientRegNo: "$patientRegNo", // Explicitly use patientRegNo
       },
     },
+
+    // 4. Lookup admission data
+    {
+      $lookup: {
+        from: "admissions",
+        localField: "patientRegNo",
+        foreignField: "regNo",
+        as: "patientInfo",
+      },
+    },
+    { $unwind: { path: "$patientInfo", preserveNullAndEmptyArrays: true } },
+
+    // 5. Lookup bed data
+    {
+      $lookup: {
+        from: "beds",
+        localField: "patientInfo.allocatedBed",
+        foreignField: "_id",
+        as: "bedInfo",
+      },
+    },
+    { $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true } },
+
+    // 6. Lookup world data
+    {
+      $lookup: {
+        from: "bedworlds",
+        localField: "bedInfo.worldId",
+        foreignField: "_id",
+        as: "worldInfo",
+      },
+    },
+    { $unwind: { path: "$worldInfo", preserveNullAndEmptyArrays: true } },
+
+    // 7. Group by paymentDate + patientRegNo (MERGE PAYMENTS)
     {
       $group: {
         _id: {
-          date: "$paymentDate",
-          receivedBy: "$payments.receivedBy",
+          paymentDate: "$paymentDate",
+          patientRegNo: "$patientRegNo",
         },
-        totalAmount: { $sum: "$payments.amount" },
-        totalDiscount: { $sum: { $ifNull: ["$payments.discount", 0] } },
-        payments: {
+        // Sum amounts and discounts
+        amount: { $sum: "$paymentAmount" },
+        discount: { $sum: "$paymentDiscount" },
+        // Take first occurrence of other fields
+        bedName: { $first: "$bedInfo.bedName" },
+        totalBill: { $first: "$totalAmount" },
+        totalPaid: { $first: "$totalPaid" },
+        admissionDate: { $first: "$patientInfo.admissionDate" },
+        releaseDate: { $first: "$patientInfo.releaseDate" },
+        world: { $first: "$worldInfo.fees" },
+        receivedBy: { $first: "$payments.receivedBy" },
+      },
+    },
+
+    // 8. Group by paymentDate only (for daily totals)
+    {
+      $group: {
+        _id: "$_id.paymentDate",
+        records: {
           $push: {
-            amount: "$payments.amount",
-            discount: "$payments.discount",
-            disCountBy: "$payments.disCountBy",
-            receivedBy: "$payments.receivedBy",
-            createdAt: "$payments.createdAt",
+            regNo: "$_id.patientRegNo",
+            amount: "$amount", // Summed amount for this patient
+            discount: "$discount",
+            bedName: "$bedName",
+            totalBill: "$totalBill",
+            totalPaid: "$totalPaid",
+            admissionDate: "$admissionDate",
+            releaseDate: "$releaseDate",
+            world: "$world",
+            receivedBy: "$receivedBy",
           },
         },
+        totalAmountPaid: { $sum: "$amount" }, // Sum all patients' payments
+        totalDiscount: { $sum: "$discount" },
+        totalBill: { $first: "$totalBill" },
+        totalPaid: { $first: "$totalPaid" },
       },
     },
+
+    // 9. Calculate due amount
     {
-      $lookup: {
-        from: "users",
-        localField: "_id.receivedBy",
-        foreignField: "_id",
-        as: "user",
+      $addFields: {
+        dueAmount: { $subtract: ["$totalBill", "$totalAmountPaid"] },
       },
     },
-    {
-      $unwind: {
-        path: "$user",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+
+    // 12. Final projection
     {
       $project: {
-        date: "$_id.date",
-        receivedBy: "$_id.receivedBy",
-        receiverName: "$user.name",
-        totalAmount: 1,
+        paymentDate: "$_id",
+        records: 1,
+        totalAmountPaid: 1,
         totalDiscount: 1,
-        payments: 1,
+        totalBill: 1,
+        totalPaid: 1,
+        dueAmount: 1,
+        _id: 0,
       },
     },
-    {
-      $sort: {
-        date: -1,
-      },
-    },
+
+    // 13. Sort by date (newest first)
+    { $sort: { paymentDate: -1 } },
   ];
 
   const result = await Payment.aggregate(pipeline);
@@ -92,106 +144,6 @@ const getPaymentStatementGroupedByDateAndReceiver = async (
 };
 
 //
-const getIndoorIncomeStatementFromDB = async (payload: Record<string, any>) => {
-  const startDate = payload.startDate
-    ? new Date(payload.startDate)
-    : new Date();
-  const endDate = payload.endDate ? new Date(payload.endDate) : new Date();
-
-  startDate.setHours(0, 0, 0, 0);
-  endDate.setHours(23, 59, 59, 999);
-
-  const pipeline: PipelineStage[] = [
-    {
-      $match: {
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate,
-        },
-      },
-    },
-    {
-      $unwind: "$payments",
-    },
-
-    {
-      $addFields: {
-        paymentDate: {
-          $dateToString: { format: "%Y-%m-%d", date: "$payments.createdAt" },
-        },
-      },
-    },
-
-    {
-      $lookup: {
-        from: "admissions",
-        localField: "patientRegNo",
-        foreignField: "regNo",
-        as: "admissionInfo",
-      },
-    },
-    {
-      $unwind: {
-        path: "$admissionInfo",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-
-    // lookup bed info
-
-    {
-      $lookup: {
-        from: "beds",
-        localField: "admisionInfo.allocatedBed",
-        foreignField: "_id",
-        as: "bedInfo",
-      },
-    },
-    {
-      $unwind: {
-        path: "$bedInfo",
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-
-    {
-      $group: {
-        _id: "$paymentDate",
-
-        totalAmount: { $sum: "$payments.amount" },
-        totalDiscount: { $sum: { $ifNull: ["$payments.discount", 0] } },
-        payments: {
-          $push: {
-            amount: "$payments.amount",
-            discount: "$payments.discount",
-            bedName: "$bedInfo.name",
-            admissionDate: "$admissionInfo.admissionDate",
-            releaseDate: "$admissionInfo.releaseDate",
-            createdAt: "$payments.createdAt",
-          },
-        },
-      },
-    },
-
-    {
-      $project: {
-        date: "$_id",
-
-        totalAmount: 1,
-        totalDiscount: 1,
-        payments: 1,
-      },
-    },
-    {
-      $sort: {
-        date: -1,
-      },
-    },
-  ];
-
-  const result = await Payment.aggregate(pipeline);
-  return result;
-};
 
 const getDueStatementFromDB = async (query: Record<string, any>) => {
   const startDate = query.startDate ? new Date(query.startDate) : new Date();
@@ -209,15 +161,40 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         },
       },
     },
+
     {
       $addFields: {
         admissionDateConverted: { $toDate: "$admissionDate" },
         admissionTimeConverted: { $toDate: "$admissionTime" },
-        paymentDate: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+
+        releaseDateConverted: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: ["$releaseDate", null] },
+                { $ne: ["$releaseDate", ""] },
+              ],
+            },
+            then: { $toDate: "$releaseDate" },
+            else: null,
+          },
+        },
+
+        billingEndDate: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: ["$releaseDate", null] },
+                { $ne: ["$releaseDate", ""] },
+              ],
+            },
+            then: { $toDate: "$releaseDate" },
+            else: "$$NOW",
+          },
         },
       },
     },
+
     // Calculate the number of full days stayed
     {
       $addFields: {
@@ -226,7 +203,7 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
             {
               $dateDiff: {
                 startDate: "$admissionDateConverted",
-                endDate: "$$NOW",
+                endDate: "$billingEndDate",
                 unit: "day",
               },
             },
@@ -346,7 +323,6 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
         _id: "$paymentDate",
         payments: {
           $push: {
-            date: "$_id",
             regNo: "$regNo",
             name: "$name",
             admisssionDate: "$admissionDate",
@@ -358,6 +334,9 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
             dueAmount: "$dueAmount",
           },
         },
+        totalBillSum: { $sum: "$totalAmount" },
+        totalPaidSum: { $sum: "$totalPaid" },
+        dueAmountSum: { $sum: "$dueAmount" },
       },
     },
     // Sort by date if needed
@@ -369,6 +348,6 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
 };
 
 export const financialReportsServices = {
-  getPaymentStatementGroupedByDateAndReceiver,
+  getIndoorIncomeStatementFromDB,
   getDueStatementFromDB,
 };

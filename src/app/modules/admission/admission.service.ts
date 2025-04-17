@@ -156,10 +156,43 @@ const getAdmissionInfoFromDB = async (id: string) => {
     },
 
     // Convert admissionDate and admissionTime to Date format
+    // {
+    //   $addFields: {
+    //     admissionDateConverted: { $toDate: "$admissionDate" },
+    //     admissionTimeConverted: { $toDate: "$admissionTime" },
+    //   },
+    // },
+
     {
       $addFields: {
         admissionDateConverted: { $toDate: "$admissionDate" },
         admissionTimeConverted: { $toDate: "$admissionTime" },
+
+        releaseDateConverted: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: ["$releaseDate", null] },
+                { $ne: ["$releaseDate", ""] },
+              ],
+            },
+            then: { $toDate: "$releaseDate" },
+            else: null,
+          },
+        },
+
+        billingEndDate: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: ["$releaseDate", null] },
+                { $ne: ["$releaseDate", ""] },
+              ],
+            },
+            then: { $toDate: "$releaseDate" },
+            else: "$$NOW",
+          },
+        },
       },
     },
 
@@ -171,7 +204,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
             {
               $dateDiff: {
                 startDate: "$admissionDateConverted",
-                endDate: "$$NOW",
+                endDate: "$billingEndDate",
                 unit: "day",
               },
             },
