@@ -409,19 +409,23 @@ const transferPatientBedFromDB = async (payload: TTransfer) => {
       [
         {
           $set: {
-            totalAmount: payload.totalAmount,
+            totalAmount: {
+              $add: ["$totalAmount", payload.totalAmount],
+            },
             dueAmount: {
               $max: [
                 0,
                 {
                   $subtract: [
-                    payload.totalAmount,
+                    { $add: ["$totalAmount", payload.totalAmount] }, // updated totalAmount
                     { $ifNull: ["$totalPaid", 0] },
                   ],
                 },
               ],
             },
-            transferAmount: payload.totalAmount,
+            transferAmount: {
+              $add: ["$transferAmount", payload.totalAmount],
+            },
           },
         },
       ],

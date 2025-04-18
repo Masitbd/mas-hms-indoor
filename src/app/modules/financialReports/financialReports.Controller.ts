@@ -16,6 +16,31 @@ const getPaymentBydateAndreceiver = catchAsync(
     });
   }
 );
+const getDailyCollection = catchAsync(async (req: Request, res: Response) => {
+  const result = await financialReportsServices.getDailyCollectionFromDB(
+    req.query
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    data: result,
+    message: "Retrived daily collecton",
+  });
+});
+const getDueCollectionStatement = catchAsync(
+  async (req: Request, res: Response) => {
+    const result =
+      await financialReportsServices.getDueCollectionStatementFromDB(req.query);
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      data: result,
+      message: "Retrived daily collecton",
+    });
+  }
+);
 
 //
 
@@ -35,4 +60,6 @@ const getDueStatement = catchAsync(async (req: Request, res: Response) => {
 export const financialReportsControllers = {
   getPaymentBydateAndreceiver,
   getDueStatement,
+  getDailyCollection,
+  getDueCollectionStatement
 };
