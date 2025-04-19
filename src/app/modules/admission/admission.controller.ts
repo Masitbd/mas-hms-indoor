@@ -44,6 +44,30 @@ const getAdmissionInfo = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+const getTodayAdmitPatients = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await AdmissionServices.getTodayAdmittedPatientFromDB();
+    sendResponse(res, {
+      success: true,
+      statusCode: status.OK,
+      message: "Retrived Today's patient Succesfully",
+      data: result,
+    });
+  }
+);
+const getAdmitPatientsOverAPeriod = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await AdmissionServices.getAdmittedPatientOverAPeriodFromDB(
+      req.query
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: status.OK,
+      message: "Retrived Patient over a period Succesfully",
+      data: result,
+    });
+  }
+);
 
 const updteAdmisison = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -81,6 +105,8 @@ export const AdmissionControllers = {
   releasePatient,
   getAdmissionInfo,
   getAllAdmissionInfo,
+  getTodayAdmitPatients,
+  getAdmitPatientsOverAPeriod,
   updteAdmisison,
   transferPatientBed,
   deleteAdmission,

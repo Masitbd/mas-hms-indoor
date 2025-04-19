@@ -78,14 +78,12 @@ const getIndoorIncomeStatementFromDB = async (query: Record<string, any>) => {
         // Sum amounts and discounts
         amount: { $sum: "$paymentAmount" },
         discount: { $sum: "$paymentDiscount" },
-        // Take first occurrence of other fields
+
         bedName: { $first: "$bedInfo.bedName" },
-        totalBill: { $first: "$totalAmount" },
+        // totalBill: { $first: "$totalAmount" },
         totalPaid: { $first: "$totalPaid" },
         admissionDate: { $first: "$patientInfo.admissionDate" },
         releaseDate: { $first: "$patientInfo.releaseDate" },
-        world: { $first: "$worldInfo.fees" },
-        receivedBy: { $first: "$payments.receivedBy" },
       },
     },
 
@@ -175,9 +173,9 @@ const getDailyCollectionFromDB = async (query: Record<string, any>) => {
 
     {
       $lookup: {
-        from: "users",
+        from: "profiles",
         localField: "payments.receivedBy",
-        foreignField: "_id",
+        foreignField: "uuid",
         as: "userInfo",
       },
     },
@@ -190,9 +188,11 @@ const getDailyCollectionFromDB = async (query: Record<string, any>) => {
           paymentDate: "$paymentDate",
           receiver: "$payments.receivedBy",
           patientRegNo: "$patientRegNo",
+          name: "$userInfo.name",
         },
         amount: { $sum: "$paymentAmount" },
         discount: { $sum: "$paymentDiscount" },
+
         createdAt: { $first: "$payments.createdAt" },
       },
     },
@@ -203,9 +203,11 @@ const getDailyCollectionFromDB = async (query: Record<string, any>) => {
         _id: {
           paymentDate: "$_id.paymentDate",
           receiver: "$_id.receiver",
+          name: "$_id.name",
         },
         patients: {
           $push: {
+            name: "$_id.name",
             regNo: "$_id.patientRegNo",
             amount: "$amount",
             discount: "$discount",
@@ -213,7 +215,7 @@ const getDailyCollectionFromDB = async (query: Record<string, any>) => {
           },
         },
         totalAmountPaid: { $sum: "$amount" },
-        totalDiscount: { $sum: "$discount" },
+        // totalDiscount: { $sum: "$discount" },
       },
     },
 
@@ -223,7 +225,7 @@ const getDailyCollectionFromDB = async (query: Record<string, any>) => {
         _id: "$_id.paymentDate",
         receivers: {
           $push: {
-            receiver: "$userInfo.name",
+            receiver: "$_id.name",
             totalAmountPaid: "$totalAmountPaid",
             totalDiscount: "$totalDiscount",
             records: "$patients",
@@ -334,6 +336,7 @@ const getDueCollectionStatementFromDB = async (query: Record<string, any>) => {
         totalBill: { $first: "$totalAmount" },
         totalPaid: { $first: "$totalPaid" },
         admissionDate: { $first: "$patientInfo.admissionDate" },
+        name: { $first: "$patientInfo.name" },
         releaseDate: { $first: "$patientInfo.releaseDate" },
       },
     },
@@ -345,19 +348,20 @@ const getDueCollectionStatementFromDB = async (query: Record<string, any>) => {
         records: {
           $push: {
             regNo: "$_id.patientRegNo",
+            name: "$name",
             amount: "$amount", // Summed amount for this patient
             discount: "$discount",
             bedName: "$bedName",
-            totalBill: "$totalBill",
-            totalPaid: "$totalPaid",
+
+            totalPaid: { $sum: "$amount" },
             admissionDate: "$admissionDate",
             releaseDate: "$releaseDate",
           },
         },
         totalAmountPaid: { $sum: "$amount" }, // Sum all patients' payments
         totalDiscount: { $sum: "$discount" },
-        totalBill: { $first: "$totalBill" },
-        totalPaid: { $first: "$totalPaid" },
+
+        totalPaid: { $sum: "$totalPaid" },
       },
     },
 

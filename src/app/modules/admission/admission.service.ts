@@ -1,5 +1,5 @@
 import { admissonSearchableFields } from "./admission.constance";
-import mongoose from "mongoose";
+import mongoose, { PipelineStage } from "mongoose";
 import { generateRegId } from "../../utils/generateRegId";
 import { Bed } from "../beds/bed.model";
 import { Payment } from "../payments/payment.model";
@@ -8,6 +8,7 @@ import { Admission } from "./admission.model";
 
 import QueryBuilder from "../../builder/QueryBuilder";
 import { TransferBed } from "../bedTransfer/bedTansfer.model";
+import { group } from "console";
 
 type TTransfer = {
   previousBed: string;
@@ -154,14 +155,6 @@ const getAdmissionInfoFromDB = async (id: string) => {
         },
       },
     },
-
-    // Convert admissionDate and admissionTime to Date format
-    // {
-    //   $addFields: {
-    //     admissionDateConverted: { $toDate: "$admissionDate" },
-    //     admissionTimeConverted: { $toDate: "$admissionTime" },
-    //   },
-    // },
 
     {
       $addFields: {
@@ -444,12 +437,194 @@ const transferPatientBedFromDB = async (payload: TTransfer) => {
   }
 };
 
+// today's admitted patient
+
+const getTodayAdmittedPatientFromDB = async () => {
+  const now = new Date();
+  const todayString = now.toISOString().split("T")[0];
+
+  const aggregatePipeline = [
+    {
+      $match: {
+        status: "admitted",
+      },
+    },
+
+    {
+      $addFields: {
+        admissionDateObj: {
+          $cond: {
+            if: { $eq: [{ $type: "$admissionDate" }, "string"] },
+            then: { $dateFromString: { dateString: "$admissionDate" } },
+            else: "$admissionDate",
+          },
+        },
+      },
+    },
+    // Extract date string for comparison
+    {
+      $addFields: {
+        admissionDateString: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: "$admissionDateObj",
+          },
+        },
+      },
+    },
+    // Lookup bed information
+    {
+      $lookup: {
+        from: "beds",
+        localField: "allocatedBed",
+        foreignField: "_id",
+        as: "bedInfo",
+      },
+    },
+    {
+      $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "assignDoct",
+        foreignField: "_id",
+        as: "doctInfo",
+      },
+    },
+    {
+      $unwind: { path: "$doctInfo", preserveNullAndEmptyArrays: true },
+    },
+    // Compare with today's date string
+    {
+      $addFields: {
+        group: {
+          $cond: {
+            if: { $eq: ["$admissionDateString", todayString] },
+            then: "Today",
+            else: "Before Today",
+          },
+        },
+      },
+    },
+    // Project only necessary fields
+    {
+      $project: {
+        name: 1,
+        regNo: 1,
+        admissionDate: 1,
+        bedName: "$bedInfo.bedName",
+        doctName: "$doctInfo.name",
+        createdAt: 1,
+        group: 1,
+        status: 1,
+      },
+    },
+    // Final group
+    {
+      $group: {
+        _id: "$group",
+        count: { $sum: 1 },
+        patients: { $push: "$$ROOT" },
+      },
+    },
+  ];
+
+  const result = await Admission.aggregate(aggregatePipeline);
+  return result;
+};
+// get patient over a period
+
+const getAdmittedPatientOverAPeriodFromDB = async (
+  query: Record<string, any>
+) => {
+  const startDate = query.startDate ? new Date(query.startDate) : new Date();
+  const endDate = query.endDate ? new Date(query.endDate) : new Date();
+
+  const aggregatePipeline: PipelineStage[] = [
+    // Step 1: Combine date + time into admissionDateTime
+    {
+      $addFields: {
+        admissionDateParsed: { $toDate: "$admissionDate" },
+        admissionTimeParsed: { $toDate: "$admissionTime" },
+      },
+    },
+    {
+      $addFields: {
+        admissionDateTime: {
+          $dateFromParts: {
+            year: { $year: "$admissionDateParsed" },
+            month: { $month: "$admissionDateParsed" },
+            day: { $dayOfMonth: "$admissionDateParsed" },
+            hour: { $hour: "$admissionTimeParsed" },
+            minute: { $minute: "$admissionTimeParsed" },
+            second: { $second: "$admissionTimeParsed" },
+          },
+        },
+      },
+    },
+    {
+      $match: {
+        admissionDateTime: {
+          $gte:startDate,
+          $lte: endDate,
+        },
+      },
+    },
+
+    // Step 3: Lookup bed info
+    {
+      $lookup: {
+        from: "beds",
+        localField: "allocatedBed",
+        foreignField: "_id",
+        as: "bedInfo",
+      },
+    },
+    {
+      $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true },
+    },
+
+    // Step 4: Group by date (ignoring time)
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: "%Y-%m-%d", date: "$admissionDateTime" },
+        },
+        patients: {
+          $push: {
+            name: "$name",
+            regNo: "$regNo",
+            admissionDateTime: "$admissionDateTime",
+            bedName: "$bedInfo.bedName",
+            releaseDate: "$releaseDate",
+            presentAddress: "$presentAddress",
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+
+    // Optional: Sort by date ascending
+    {
+      $sort: {
+        _id: 1,
+      },
+    },
+  ];
+
+  const result = await Admission.aggregate(aggregatePipeline);
+  return result;
+};
+
 export const AdmissionServices = {
   getAdmissionInfoFromDB,
   getAllAdmissionFromDB,
+  getTodayAdmittedPatientFromDB,
   createAdmissionIntoDB,
   realeasePatientFromDB,
   updateAdmissonIntoDB,
   transferPatientBedFromDB,
   deleteAdmissionFromDB,
+  getAdmittedPatientOverAPeriodFromDB,
 };

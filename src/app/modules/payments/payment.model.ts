@@ -7,7 +7,7 @@ const paymentArray = new Schema<TPaymentArray>(
     discount: { type: Number },
     disCountBy: { type: Number },
     purpose: { type: String, enum: ["due-collection", "payment"] },
-    receivedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    receivedBy: { type: String, index: true, required: true },
   },
   {
     _id: false,
