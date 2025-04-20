@@ -2,12 +2,20 @@ import mongoose, { model, Schema } from "mongoose";
 import { TPAdmission, TPatientService } from "./admission.interface";
 import { Payment } from "../payments/payment.model";
 
-const patientServiceSchema = new Schema<TPatientService>({
-  serviceCategory: { type: String },
-  seriveId: { type: Schema.Types.ObjectId }, //TODO add ref of servicve model
-  servicedBy: { type: String },
-  amount: { type: Number },
-});
+const patientServiceSchema = new Schema<TPatientService>(
+  {
+    serviceCategory: { type: String },
+    allocatedBed:{type:String},
+    doctorId:{type:String},
+    seriveId: { type: String },
+    servicedBy: { type: String },
+    amount: { type: Number },
+  },
+  {
+    _id: false,
+    timestamps: true,
+  }
+);
 
 const admissionSchema = new Schema<TPAdmission>(
   {

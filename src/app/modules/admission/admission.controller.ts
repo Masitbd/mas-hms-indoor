@@ -80,6 +80,17 @@ const updteAdmisison = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const addServicesToPatient = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await AdmissionServices.addServicesToPatientIntoDB(req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: status.OK,
+    message: "Updated Succesfully",
+    data: result,
+  });
+});
+
 const transferPatientBed = catchAsync(async (req: Request, res: Response) => {
   const result = await AdmissionServices.transferPatientBedFromDB(req.body);
   sendResponse(res, {
@@ -107,6 +118,7 @@ export const AdmissionControllers = {
   getAllAdmissionInfo,
   getTodayAdmitPatients,
   getAdmitPatientsOverAPeriod,
+  addServicesToPatient,
   updteAdmisison,
   transferPatientBed,
   deleteAdmission,

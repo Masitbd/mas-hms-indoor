@@ -24,6 +24,7 @@ const paymentSchema = new Schema<TPayments>(
       index: true,
     },
     transferAmount: { type: Number, default: 0 },
+    serviceAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true, default: 0 },
     totalPaid: { type: Number, default: 0 },
     dueAmount: { type: Number, required: true, default: 0 },

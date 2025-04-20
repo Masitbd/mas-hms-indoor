@@ -1,5 +1,5 @@
 import { admissonSearchableFields } from "./admission.constance";
-import mongoose, { PipelineStage } from "mongoose";
+import mongoose, { PipelineStage, Types } from "mongoose";
 import { generateRegId } from "../../utils/generateRegId";
 import { Bed } from "../beds/bed.model";
 import { Payment } from "../payments/payment.model";
@@ -8,7 +8,7 @@ import { Admission } from "./admission.model";
 
 import QueryBuilder from "../../builder/QueryBuilder";
 import { TransferBed } from "../bedTransfer/bedTansfer.model";
-import { group } from "console";
+import ApiError from "../../../errors/ApiError";
 
 type TTransfer = {
   previousBed: string;
@@ -22,6 +22,19 @@ type TTransfer = {
   id: string;
   dayStayed: number;
 };
+
+interface ServicePayload {
+  serviceId: string | Types.ObjectId;
+  [key: string]: any; // For extra fields like name, amount, etc.
+}
+
+// Main payload from frontend
+interface AddServicePayload {
+  regNo: string;
+  allocatedBed?: string;
+  services: ServicePayload[];
+  totalBill: number;
+}
 
 const createAdmissionIntoDB = async (payload: any) => {
   const session = await mongoose.startSession(); // Start transaction session
@@ -513,6 +526,8 @@ const getTodayAdmittedPatientFromDB = async () => {
         name: 1,
         regNo: 1,
         admissionDate: 1,
+        fatherName: 1,
+        releaseDate: 1,
         bedName: "$bedInfo.bedName",
         doctName: "$doctInfo.name",
         createdAt: 1,
@@ -566,7 +581,7 @@ const getAdmittedPatientOverAPeriodFromDB = async (
     {
       $match: {
         admissionDateTime: {
-          $gte:startDate,
+          $gte: startDate,
           $lte: endDate,
         },
       },
@@ -595,7 +610,7 @@ const getAdmittedPatientOverAPeriodFromDB = async (
           $push: {
             name: "$name",
             regNo: "$regNo",
-            admissionDateTime: "$admissionDateTime",
+            admissionDate: "$admissionDateTime",
             bedName: "$bedInfo.bedName",
             releaseDate: "$releaseDate",
             presentAddress: "$presentAddress",
@@ -617,6 +632,75 @@ const getAdmittedPatientOverAPeriodFromDB = async (
   return result;
 };
 
+// add service
+
+const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
+  const { regNo, services = [] } = payload;
+
+  if (!regNo || !services) {
+    throw new ApiError(400, "Need RegNo and Service");
+  }
+
+ 
+  const incomingServiceIds = services.map((s) => s.serviceId);
+
+  
+  const existing = await Admission.findOne(
+    {
+      regNo,
+      "services.serviceId": { $in: incomingServiceIds },
+    },
+    { "services.serviceId": 1 }
+  ).lean();
+
+  const existingIdsSet = new Set(
+    (existing?.services || []).map((s: any) => s.serviceId.toString())
+  );
+
+
+  const newServices = services.filter(
+    (s) => !existingIdsSet.has(s.serviceId.toString())
+  );
+
+  if (newServices.length === 0) {
+    throw new ApiError(400, "Already Exist");
+  }
+
+ 
+  const servicesToAdd = newServices.map((s) => ({
+    ...s,
+  }));
+
+  await Bed.findByIdAndUpdate(
+    payload.allocatedBed,
+    { isAllocated: true },
+    { new: true }
+  );
+
+  await Payment.findOneAndUpdate(
+    { patientRegNo: payload.regNo }, // or any other condition
+    { $inc: { serviceAmount: payload.totalBill } },
+    { new: true }
+  );
+
+  const updateData: any = {
+    $push: { services: { $each: servicesToAdd } },
+  };
+
+  // Only add allocatedBed if it exists in payload
+  if (payload.allocatedBed) {
+    updateData.$set = {
+      allocatedBed: payload.allocatedBed,
+    };
+  }
+
+  console.log(updateData, "data");
+  // Step 5: Push new services
+  const updated = await Admission.updateOne({ regNo }, updateData);
+
+  return updated;
+};
+
 export const AdmissionServices = {
   getAdmissionInfoFromDB,
   getAllAdmissionFromDB,
@@ -624,6 +708,7 @@ export const AdmissionServices = {
   createAdmissionIntoDB,
   realeasePatientFromDB,
   updateAdmissonIntoDB,
+  addServicesToPatientIntoDB,
   transferPatientBedFromDB,
   deleteAdmissionFromDB,
   getAdmittedPatientOverAPeriodFromDB,

@@ -12,6 +12,7 @@ router.get(
   AdmissionControllers.getAdmitPatientsOverAPeriod
 );
 router.patch("/transfer", AdmissionControllers.transferPatientBed);
+router.patch("/add-service", AdmissionControllers.addServicesToPatient);
 router.get("/:id", AdmissionControllers.getAdmissionInfo);
 router.patch("/:id", AdmissionControllers.updteAdmisison);
 router.delete("/:id", AdmissionControllers.deleteAdmission);

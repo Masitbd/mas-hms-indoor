@@ -5,6 +5,8 @@ export type TPatientService = {
   seriveId: Schema.Types.ObjectId;
   servicedBy: string;
   amount: number;
+  allocatedBed?: string;
+  doctorId?: string;
 };
 
 export type TPAdmission = {
