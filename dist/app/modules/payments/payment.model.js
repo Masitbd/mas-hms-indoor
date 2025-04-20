@@ -6,15 +6,20 @@ const paymentArray = new mongoose_1.Schema({
     amount: { type: Number, default: 0, required: true },
     discount: { type: Number },
     disCountBy: { type: Number },
+    purpose: { type: String, enum: ["due-collection", "payment"] },
+    receivedBy: { type: String, index: true, required: true },
 }, {
+    _id: false,
     timestamps: true,
 });
 const paymentSchema = new mongoose_1.Schema({
     patientRegNo: {
         type: String,
         required: true,
+        index: true,
     },
     transferAmount: { type: Number, default: 0 },
+    serviceAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true, default: 0 },
     totalPaid: { type: Number, default: 0 },
     dueAmount: { type: Number, required: true, default: 0 },

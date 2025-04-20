@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.financialRoutes = void 0;
+const express_1 = require("express");
+const financialReports_Controller_1 = require("./financialReports.Controller");
+const router = (0, express_1.Router)();
+router.get("/", financialReports_Controller_1.financialReportsControllers.getPaymentBydateAndreceiver);
+router.get("/due-collection", financialReports_Controller_1.financialReportsControllers.getDueStatement);
+router.get("/due-collection-statement", financialReports_Controller_1.financialReportsControllers.getDueCollectionStatement);
+router.get("/daily-collection-details", financialReports_Controller_1.financialReportsControllers.getDailyCollection);
+exports.financialRoutes = router;

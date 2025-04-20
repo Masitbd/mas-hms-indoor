@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Payment } from "./payment.model";
 import { TPaymentArray } from "./payment.interface";
+import { journalEntryService } from "../journal-entry/journalEntry.service";
 
 const getAllPayementInfoWithPatientInfoFromDB = async () => {
   const aggregatePipeline = [
@@ -67,6 +68,12 @@ const updatePaymentAUserIntoDB = async (
   // Save the updated document
   await payment.save();
 
+  if (payload?.purpose == "due-collection") {
+    await journalEntryService.postJournalEntryForDueCollection({
+      amount: payload.amount ?? 0,
+      token: "test",
+    });
+  }
   return payment;
 };
 
