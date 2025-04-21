@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentServices = void 0;
 const payment_model_1 = require("./payment.model");
+const journalEntry_service_1 = require("../journal-entry/journalEntry.service");
 const getAllPayementInfoWithPatientInfoFromDB = () => __awaiter(void 0, void 0, void 0, function* () {
     const aggregatePipeline = [
         {
@@ -41,16 +42,29 @@ const getAllPayementInfoWithPatientInfoFromDB = () => __awaiter(void 0, void 0, 
 });
 // ? update a patient payment ==
 const updatePaymentAUserIntoDB = (regNo, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const payment = yield payment_model_1.Payment.findOne({ patientRegNo: regNo });
     if (!payment) {
         throw new Error("Payment record not found");
     }
-    payment.payments.push(Object.assign(Object.assign({}, payload), { amount: payload.amount || 0, discount: payload.discount || 0 }));
-    payment.totalPaid = payment.payments.reduce((acc, payment) => acc + (payment.amount - (payment.discount || 0)), 0);
+    payment.payments.push({
+        amount: payload.amount || 0,
+        discount: payload.discount || 0,
+        purpose: payload.purpose,
+        disCountBy: payload.disCountBy || "",
+        receivedBy: payload.receivedBy,
+    });
+    payment.totalPaid = payment.payments.reduce((acc, payment) => { var _a; return acc + (payment.amount - ((_a = payment.discount) !== null && _a !== void 0 ? _a : 0)); }, 0);
     // Recalculate dueAmount
     payment.dueAmount = Math.max(0, payment.totalAmount - (payment.totalPaid || 0));
     // Save the updated document
     yield payment.save();
+    if ((payload === null || payload === void 0 ? void 0 : payload.purpose) == "due-collection") {
+        yield journalEntry_service_1.journalEntryService.postJournalEntryForDueCollection({
+            amount: (_a = payload.amount) !== null && _a !== void 0 ? _a : 0,
+            token: "test",
+        });
+    }
     return payment;
 });
 // export

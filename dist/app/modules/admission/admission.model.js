@@ -47,9 +47,14 @@ const mongoose_1 = __importStar(require("mongoose"));
 const payment_model_1 = require("../payments/payment.model");
 const patientServiceSchema = new mongoose_1.Schema({
     serviceCategory: { type: String },
-    seriveId: { type: mongoose_1.Schema.Types.ObjectId }, //TODO add ref of servicve model
+    allocatedBed: { type: String },
+    doctorId: { type: String },
+    seriveId: { type: String },
     servicedBy: { type: String },
     amount: { type: Number },
+}, {
+    _id: false,
+    timestamps: true,
 });
 const admissionSchema = new mongoose_1.Schema({
     regNo: { type: String, required: true, unique: true },
@@ -85,10 +90,12 @@ const admissionSchema = new mongoose_1.Schema({
     citizenShip: { type: String },
     disease: { type: String },
     isTransfer: { type: Boolean },
+    tranferInfo: { type: mongoose_1.Schema.Types.ObjectId },
     firstAdmitDate: { type: String },
     allocatedBed: { type: mongoose_1.default.Types.ObjectId, ref: "Bed" },
     paymentId: { type: mongoose_1.default.Types.ObjectId, ref: "Payment" },
     services: [patientServiceSchema],
+    fixedBill: { type: mongoose_1.Schema.Types.ObjectId, ref: "PackageItem" },
 }, {
     timestamps: true,
 });

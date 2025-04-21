@@ -54,9 +54,37 @@ const getAdmissionInfo = (0, catchAsync_1.default)((req, res) => __awaiter(void 
         data: result,
     });
 }));
+const getTodayAdmitPatients = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield admission_service_1.AdmissionServices.getTodayAdmittedPatientFromDB();
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Retrived Today's patient Succesfully",
+        data: result,
+    });
+}));
+const getAdmitPatientsOverAPeriod = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield admission_service_1.AdmissionServices.getAdmittedPatientOverAPeriodFromDB(req.query);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Retrived Patient over a period Succesfully",
+        data: result,
+    });
+}));
 const updteAdmisison = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const result = yield admission_service_1.AdmissionServices.updateAdmissonIntoDB(id, req.body);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Updated Succesfully",
+        data: result,
+    });
+}));
+const addServicesToPatient = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const result = yield admission_service_1.AdmissionServices.addServicesToPatientIntoDB(req.body);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_1.default.OK,
@@ -87,6 +115,9 @@ exports.AdmissionControllers = {
     releasePatient,
     getAdmissionInfo,
     getAllAdmissionInfo,
+    getTodayAdmitPatients,
+    getAdmitPatientsOverAPeriod,
+    addServicesToPatient,
     updteAdmisison,
     transferPatientBed,
     deleteAdmission,

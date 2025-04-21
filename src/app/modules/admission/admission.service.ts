@@ -9,6 +9,8 @@ import { Admission } from "./admission.model";
 import QueryBuilder from "../../builder/QueryBuilder";
 import { TransferBed } from "../bedTransfer/bedTansfer.model";
 import ApiError from "../../../errors/ApiError";
+import { AccountService } from "../../../shared/axios";
+import { journalEntryService } from "../journal-entry/journalEntry.service";
 
 type TTransfer = {
   previousBed: string;
@@ -85,6 +87,22 @@ const createAdmissionIntoDB = async (payload: any) => {
     await session.commitTransaction();
     session.endSession();
 
+    // calculation of net price
+    const netPrice =
+      payload.totalAmount -
+      (payload?.cashDiscount ?? 0) -
+      (payload.totalAmount * (payload.parcentDiscount ?? 0)) / 100;
+
+    const vat = ((netPrice ?? 0) * (payload?.vat ?? 0)) / 100;
+    const netPayable = netPrice + vat;
+
+    //! token should be passed in future
+    await journalEntryService.postAdmissionJournalEntry({
+      due: netPayable - (payload?.paid ?? 0),
+      orderAmount: netPayable,
+      paid: payload?.paid ?? 0,
+      token: "test",
+    });
     return result[0];
   } catch (error) {
     await session.abortTransaction();
@@ -442,6 +460,12 @@ const transferPatientBedFromDB = async (payload: TTransfer) => {
 
     await session.commitTransaction();
     await session.endSession();
+
+    //Posting the amount to the account server
+    await journalEntryService.postJournalEntryForBedTransfer({
+      amount: payload?.totalAmount ?? 0,
+      token: "test",
+    });
     return previousAdmission;
   } catch (error) {
     await session.abortTransaction();
@@ -641,10 +665,8 @@ const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
     throw new ApiError(400, "Need RegNo and Service");
   }
 
- 
   const incomingServiceIds = services.map((s) => s.serviceId);
 
-  
   const existing = await Admission.findOne(
     {
       regNo,
@@ -657,7 +679,6 @@ const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
     (existing?.services || []).map((s: any) => s.serviceId.toString())
   );
 
-
   const newServices = services.filter(
     (s) => !existingIdsSet.has(s.serviceId.toString())
   );
@@ -666,7 +687,6 @@ const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
     throw new ApiError(400, "Already Exist");
   }
 
- 
   const servicesToAdd = newServices.map((s) => ({
     ...s,
   }));
@@ -694,9 +714,14 @@ const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
     };
   }
 
-  console.log(updateData, "data");
   // Step 5: Push new services
   const updated = await Admission.updateOne({ regNo }, updateData);
+
+  // Post journal service
+  await journalEntryService.postJournalEntryForServiceAdd({
+    amount: payload.totalBill ?? 0,
+    token: "test",
+  });
 
   return updated;
 };
