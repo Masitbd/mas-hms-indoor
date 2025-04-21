@@ -13,5 +13,9 @@ router.get(
   "/daily-collection-details",
   financialReportsControllers.getDailyCollection
 );
+router.get(
+  "/hospital-bill-summery/:id",
+  financialReportsControllers.getPatientHospitalBillSummery
+);
 
 export const financialRoutes = router;

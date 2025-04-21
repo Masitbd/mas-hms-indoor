@@ -56,10 +56,26 @@ const getDueStatement = catchAsync(async (req: Request, res: Response) => {
     message: "Retrived Indoor Due details",
   });
 });
+const getPatientHospitalBillSummery = catchAsync(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const result =
+      await financialReportsServices.getPatientHospitalBillSummeryFromDB(id);
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      data: result,
+      message: "Retrived Indoor Due details",
+    });
+  }
+);
 
 export const financialReportsControllers = {
   getPaymentBydateAndreceiver,
   getDueStatement,
   getDailyCollection,
-  getDueCollectionStatement
+  getDueCollectionStatement,
+  getPatientHospitalBillSummery,
 };
