@@ -259,23 +259,59 @@ const getAdmissionInfoFromDB = async (id: string) => {
       $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
     },
 
+    // {
+    //   $addFields: {
+    //     totalAmount: {
+    //       $cond: {
+    //         if: { $eq: ["$daysStayed", 0] },
+    //         then: "$worldInfo.charge",
+
+    //         else: {
+    //           $add: [
+    //             { $multiply: ["$daysStayed", "$worldInfo.fees"] },
+    //             {
+    //               $ifNull: [
+    //                 "$paymentInfo.totalAmount",
+    //                 "$paymentInfoserviceAmount",
+    //                 0,
+    //               ],
+    //             },
+    //           ],
+    //         },
+    //       },
+    //     },
+    //   },
+    // },
     {
-      $addFields: {
-        totalAmount: {
+  $addFields: {
+    totalAmount: {
+      $add: [
+        // First part: Calculate the base amount based on days stayed
+        {
           $cond: {
             if: { $eq: ["$daysStayed", 0] },
             then: "$worldInfo.charge",
-
             else: {
-              $add: [
-                { $multiply: ["$daysStayed", "$worldInfo.fees"] },
-                { $ifNull: ["$paymentInfo.totalAmount", 0] },
-              ],
+              $multiply: ["$daysStayed", "$worldInfo.fees"]
             },
           },
         },
-      },
+    
+        {
+          $ifNull: ["$paymentInfo.serviceAmount", 0]
+        },
+        
+        {
+          $cond: {
+            if: { $gt: ["$daysStayed", 0] },
+            then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+            else: 0
+          }
+        }
+      ],
     },
+  },
+},
 
     {
       $lookup: {
