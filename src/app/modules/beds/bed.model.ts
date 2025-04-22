@@ -8,6 +8,7 @@ const bedSchema = new Schema<TBedAllocation>(
     phone: { type: String },
     floor: { type: String },
     worldId: { type: Schema.Types.ObjectId, ref: "BedWorld" },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

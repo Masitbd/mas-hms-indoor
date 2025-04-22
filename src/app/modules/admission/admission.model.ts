@@ -5,8 +5,8 @@ import { Payment } from "../payments/payment.model";
 const patientServiceSchema = new Schema<TPatientService>(
   {
     serviceCategory: { type: String },
-    allocatedBed:{type:String},
-    doctorId:{type:String},
+    allocatedBed: { type: String },
+    doctorId: { type: String },
     seriveId: { type: String },
     servicedBy: { type: String },
     amount: { type: Number },
@@ -59,6 +59,7 @@ const admissionSchema = new Schema<TPAdmission>(
     paymentId: { type: mongoose.Types.ObjectId, ref: "Payment" },
     services: [patientServiceSchema],
     fixedBill: { type: Schema.Types.ObjectId, ref: "PackageItem" },
+    authorPerson: { type: String },
   },
   {
     timestamps: true,

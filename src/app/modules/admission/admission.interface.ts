@@ -40,4 +40,5 @@ export type TPAdmission = {
   paymentId: Schema.Types.ObjectId;
   services: [TPatientService];
   fixedBill: Schema.Types.ObjectId;
+  authorPerson: string;
 };

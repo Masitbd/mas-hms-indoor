@@ -6,4 +6,5 @@ export type TBedAllocation = {
   phone: string;
   floor: string;
   worldId: Schema.Types.ObjectId;
+  isDeleted: boolean;
 };

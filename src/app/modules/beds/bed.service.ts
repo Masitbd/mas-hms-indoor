@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { Bed } from "./bed.model";
 import { TBedAllocation } from "./bed.interface";
 import QueryBuilder from "../../builder/QueryBuilder";
+import { bedSearchablefields } from "./bedConstance";
 
 const createBedIntoDB = async (payload: TBedAllocation) => {
   const result = await Bed.create(payload);
@@ -12,11 +13,13 @@ const createBedIntoDB = async (payload: TBedAllocation) => {
 // get all beds
 
 const getAllBedsFromDB = async (query: Record<string, any>) => {
-  const queryParams =
-    Object.keys(query).length === 0 ? {} : { isAllocated: false };
+  const queryParams: Record<string, any> = {
+    isDeleted: false,
+    isAllocated: false,
+  };
 
   const bedQuery = new QueryBuilder(
-    Bed.find(queryParams).populate("worldId", "worldName"),
+    Bed.find(queryParams).select("-isDeleted").populate("worldId", "worldName"),
     query
   ).filter();
 
@@ -25,13 +28,17 @@ const getAllBedsFromDB = async (query: Record<string, any>) => {
   return result;
 };
 
-// get by available world Name
+const getAllBedsForAdminFromDB = async (query: Record<string, any>) => {
+  const bedQuery = new QueryBuilder(
+    Bed.find({ isDeleted: false })
+      .select("-isDeleted")
+      .populate("worldId", "worldName"),
+    query
+  )
+    .search(bedSearchablefields)
+    .filter();
 
-const getBedByWorldNameAndAvailablityFromDB = async (id: string) => {
-  const result = await Bed.findOne({
-    _id: mongoose.Types.ObjectId.createFromBase64(id),
-    beds: { $elemMatch: { isAllocated: false } },
-  });
+  const result = await bedQuery.modelQuery;
 
   return result;
 };
@@ -42,32 +49,17 @@ const updateBedsIntoDB = async (
   id: string,
   payload: Partial<TBedAllocation>
 ) => {
-  const { bed, filterBed, ...remainingData } = payload as TBedAllocation & {
-    bed: Partial<TBedAllocation>;
-    filterBed?: { _id: string };
-  };
-
-  const modifiedData: Record<string, any> = { ...remainingData };
-
-  if (bed && Object.keys(bed)) {
-    for (const [key, value] of Object.entries(bed)) {
-      modifiedData[`beds.$[bedElem].${key}`] = value;
-    }
-  }
-
-  const result = await Bed.findByIdAndUpdate(id, modifiedData, {
-    new: true,
-    runValidators: true,
-    arrayFilters: [{ "bedEle._id": filterBed?._id }],
-  });
-
-  return result;
+  return await Bed.findByIdAndUpdate(id, payload, { new: true });
 };
 
 // delete bed
 
 const deleteBedFromDB = async (id: string) => {
-  const result = await Bed.findByIdAndDelete(id);
+  const result = await Bed.findByIdAndUpdate(
+    id,
+    { isDeleted: true },
+    { new: true }
+  );
 
   return result;
 };
@@ -75,7 +67,7 @@ const deleteBedFromDB = async (id: string) => {
 export const BedServices = {
   createBedIntoDB,
   getAllBedsFromDB,
-  getBedByWorldNameAndAvailablityFromDB,
+  getAllBedsForAdminFromDB,
   updateBedsIntoDB,
   deleteBedFromDB,
 };

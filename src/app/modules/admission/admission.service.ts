@@ -344,8 +344,12 @@ const deleteAdmissionFromDB = async (id: string) => {
   }
 };
 //
-const realeasePatientFromDB = async (option: { id: string; bedId: string }) => {
-  const { id, bedId } = option;
+const realeasePatientFromDB = async (option: {
+  id: string;
+  bedId: string;
+  authorPerson?: string;
+}) => {
+  const { id, bedId, authorPerson } = option;
   const session = await mongoose.startSession(); // Start transaction session
   session.startTransaction();
 
@@ -355,6 +359,7 @@ const realeasePatientFromDB = async (option: { id: string; bedId: string }) => {
       {
         status: "released",
         releaseDate: new Date().toISOString(),
+        authorPerson,
       },
       { new: true, session }
     );

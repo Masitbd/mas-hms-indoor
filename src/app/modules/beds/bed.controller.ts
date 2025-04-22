@@ -24,14 +24,13 @@ const getAllBeds = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
-const getSingleBed = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const result = await BedServices.getBedByWorldNameAndAvailablityFromDB(id);
+const getAllBedsForAdmin = catchAsync(async (req: Request, res: Response) => {
+  const result = await BedServices.getAllBedsForAdminFromDB(req.query);
 
   sendResponse(res, {
     success: true,
     statusCode: status.OK,
-    message: "Bed Retrived Successfully",
+    message: "Bed Retrived for admin Successfully",
     data: result,
   });
 });
@@ -62,7 +61,7 @@ const deleteBed = catchAsync(async (req: Request, res: Response) => {
 export const BedControllers = {
   createBed,
   getAllBeds,
-  getSingleBed,
+  getAllBedsForAdmin,
   updateBed,
   deleteBed,
 };

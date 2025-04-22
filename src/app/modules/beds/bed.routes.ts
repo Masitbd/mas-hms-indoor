@@ -4,7 +4,7 @@ import { Router } from "express";
 const router = Router();
 
 router.get("/", BedControllers.getAllBeds);
-router.get("/:id", BedControllers.getSingleBed);
+router.get("/for-admin", BedControllers.getAllBedsForAdmin);
 router.post("/", BedControllers.createBed);
 router.put("/:id", BedControllers.updateBed);
 router.delete("/:id", BedControllers.deleteBed);
