@@ -6,7 +6,8 @@ const patientServiceSchema = new Schema<TPatientService>(
   {
     serviceCategory: { type: String },
     allocatedBed: { type: String },
-    doctorId: { type: String },
+    doctorId: { type: String, default: "" },
+
     serviceId: { type: String },
     quantity: { type: Number },
     servicedBy: { type: String },

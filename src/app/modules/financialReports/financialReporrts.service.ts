@@ -910,11 +910,22 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
       },
     },
     // service group
+    {
+      $addFields: {
+        "services.serviceIdObj": {
+          $cond: {
+            if: { $ne: ["$services.serviceId", ""] },
+            then: { $toObjectId: "$services.serviceId" },
+            else: null,
+          },
+        },
+      },
+    },
 
     {
       $lookup: {
         from: "tests", // collection where service/test names are stored
-        localField: "services.serviceId", // field from current doc
+        localField: "services.serviceIdObj", // field from current doc
         foreignField: "_id", // field in the tests collection
         as: "testInfo",
       },
@@ -929,7 +940,7 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
 
         serviceTotal: { $sum: "$services.amount" },
         serviceDate: { $first: "$services.createdAt" },
-        quantity: { $first: "$services.quantity" },
+        quantity: { $sum: "$services.quantity" },
         serviceAmount: { $first: "$services.amount" },
         serviceName: { $first: "$testInfo.label" },
         general: { $first: "$worldInfo.charge" },
@@ -979,6 +990,109 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
   return result;
 };
 
+// patient doctor bill
+
+const getPatientDoctorBillsFromDB = async (id: string) => {
+  const result = await Admission.aggregate([
+    // Match the specific admission
+    {
+      $match: { _id: new mongoose.Types.ObjectId(id) },
+    },
+    // Lookup bed information
+    {
+      $lookup: {
+        from: "beds",
+        localField: "allocatedBed",
+        foreignField: "_id",
+        as: "bedInfo",
+      },
+    },
+    // Unwind bed info array to a single object
+    {
+      $unwind: {
+        path: "$bedInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // Unwind services to work with them individually
+    {
+      $unwind: {
+        path: "$services",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // Filter only doctor's related services
+    {
+      $match: {
+        "services.serviceCategory": "doctor's related",
+      },
+    },
+    // Convert string IDs to ObjectIds for lookups
+    {
+      $addFields: {
+        "services.doctorIdObj": {
+          $cond: {
+            if: { $ne: ["$services.doctorId", ""] },
+            then: { $toObjectId: "$services.doctorId" },
+            else: null,
+          },
+        },
+        "services.serviceIdObj": { $toObjectId: "$services.serviceId" },
+      },
+    },
+    // Lookup doctor information using the converted ObjectId
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "services.doctorIdObj",
+        foreignField: "_id",
+        as: "doctorInfo",
+      },
+    },
+    // Unwind doctor info
+    {
+      $unwind: {
+        path: "$doctorInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+
+    // Lookup test/service information using the converted ObjectId
+    {
+      $lookup: {
+        from: "tests",
+        localField: "services.serviceIdObj",
+        foreignField: "_id",
+        as: "testInfo",
+      },
+    },
+    // Unwind test info
+    {
+      $unwind: {
+        path: "$testInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // Project only needed fields
+    {
+      $project: {
+        _id: 0,
+        doctorName: "$doctorInfo.name",
+        speciality: "$doctorInfo.speciality",
+        visitType: "$testInfo.label",
+        bedName: "$bedInfo.bedName",
+        amount: "$services.amount",
+        name: "$name",
+        regNO: "$regNo",
+        quantity: "$services.quantity",
+        servicedBy: "$services.servicedBy",
+        createdAt: "$services.createdAt",
+      },
+    },
+  ]);
+
+  return result;
+};
 export const financialReportsServices = {
   getIndoorIncomeStatementFromDB,
   getDueStatementFromDB,
@@ -986,4 +1100,5 @@ export const financialReportsServices = {
   getDueCollectionStatementFromDB,
   getPatientHospitalBillSummeryFromDB,
   getPatientHospitalBillDetailsFromDB,
+  getPatientDoctorBillsFromDB,
 };

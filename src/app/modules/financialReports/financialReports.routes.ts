@@ -21,5 +21,9 @@ router.get(
   "/hospital-bill-details/:id",
   financialReportsControllers.getPatientHospitalBillDetails
 );
+router.get(
+  "/doctor-bills/:id",
+  financialReportsControllers.getPatientDoctorBills
+);
 
 export const financialRoutes = router;

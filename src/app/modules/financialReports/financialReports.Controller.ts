@@ -86,6 +86,22 @@ const getPatientHospitalBillDetails = catchAsync(
     });
   }
 );
+const getPatientDoctorBills = catchAsync(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const result = await financialReportsServices.getPatientDoctorBillsFromDB(
+      id
+    );
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      data: result,
+      message: "Retrived doctor bills details",
+    });
+  }
+);
 
 export const financialReportsControllers = {
   getPaymentBydateAndreceiver,
@@ -94,4 +110,5 @@ export const financialReportsControllers = {
   getDueCollectionStatement,
   getPatientHospitalBillSummery,
   getPatientHospitalBillDetails,
+  getPatientDoctorBills,
 };
