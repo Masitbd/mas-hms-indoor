@@ -934,15 +934,70 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
       $unwind: { path: "$testInfo", preserveNullAndEmptyArrays: true },
     },
 
+    // {
+    //   $group: {
+    //     _id: "$services.serviceCategory",
+
+    //     serviceTotal: { $sum: "$services.amount" },
+    //     serviceDate: { $first: "$services.createdAt" },
+    //     quantity: { $sum: "$services.quantity" },
+    //     serviceAmount: { $first: "$services.amount" },
+    //     serviceName: { $first: "$testInfo.label" },
+    //     general: { $first: "$worldInfo.charge" },
+    //     regNo: { $first: "$regNo" },
+    //     name: { $first: "$name" },
+    //     age: { $first: "$age" },
+    //     gender: { $first: "$gender" },
+    //     guradin: { $first: "$fatherName" },
+    //     admissionDate: { $first: "$admissionDate" },
+    //     releaseDate: { $first: "$releaseDate" },
+    //     bedName: { $first: "$bedInfo.bedName" },
+    //     bedCharge: { $first: "$bedCharge" },
+    //     refDoct: { $first: "$doctInfo.name" },
+    //   },
+    // },
+
+    // // final group
+
+    // {
+    //   $group: {
+    //     _id: null,
+    //     serviceSummary: {
+    //       $push: {
+    //         category: "$_id",
+    //         date: "$serviceDate",
+    //         serviceAmount: "$serviceAmount",
+    //         quantity: "$quantity",
+    //         name: "$serviceName",
+    //         total: "$serviceTotal",
+    //       },
+    //     },
+    //     general: { $first: "$general" },
+    //     regNo: { $first: "$regNo" },
+    //     name: { $first: "$name" },
+    //     age: { $first: "$age" },
+    //     gender: { $first: "$gender" },
+    //     guradin: { $first: "$guradin" },
+    //     admissionDate: { $first: "$admissionDate" },
+    //     releaseDate: { $first: "$releaseDate" },
+    //     bedName: { $first: "$bedName" },
+    //     bedCharge: { $first: "$bedCharge" },
+    //     refDoct: { $first: "$refDoct" },
+    //   },
+    // },
+
     {
       $group: {
         _id: "$services.serviceCategory",
-
-        serviceTotal: { $sum: "$services.amount" },
-        serviceDate: { $first: "$services.createdAt" },
-        quantity: { $sum: "$services.quantity" },
-        serviceAmount: { $first: "$services.amount" },
-        serviceName: { $first: "$testInfo.label" },
+        services: {
+          $push: {
+            date: "$services.createdAt",
+            serviceAmount: "$services.amount",
+            quantity: "$services.quantity",
+            name: "$testInfo.label",
+            total: "$services.amount",
+          },
+        },
         general: { $first: "$worldInfo.charge" },
         regNo: { $first: "$regNo" },
         name: { $first: "$name" },
@@ -957,19 +1012,14 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
       },
     },
 
-    // final group
-
+    // Final grouping — combine all service categories
     {
       $group: {
         _id: null,
-        serviceSummary: {
+        groupedServices: {
           $push: {
             category: "$_id",
-            date: "$serviceDate",
-            serviceAmount: "$serviceAmount",
-            quantity: "$quantity",
-            name: "$serviceName",
-            total: "$serviceTotal",
+            services: "$services",
           },
         },
         general: { $first: "$general" },
@@ -1083,9 +1133,9 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
         bedName: "$bedInfo.bedName",
         amount: "$services.amount",
         name: "$name",
-        regNO: "$regNo",
+        regNo: "$regNo",
         quantity: "$services.quantity",
-        servicedBy: "$services.servicedBy",
+
         createdAt: "$services.createdAt",
       },
     },
