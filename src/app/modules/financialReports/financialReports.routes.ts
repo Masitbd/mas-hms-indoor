@@ -17,5 +17,9 @@ router.get(
   "/hospital-bill-summery/:id",
   financialReportsControllers.getPatientHospitalBillSummery
 );
+router.get(
+  "/hospital-bill-details/:id",
+  financialReportsControllers.getPatientHospitalBillDetails
+);
 
 export const financialRoutes = router;

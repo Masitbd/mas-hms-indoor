@@ -71,6 +71,21 @@ const getPatientHospitalBillSummery = catchAsync(
     });
   }
 );
+const getPatientHospitalBillDetails = catchAsync(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const result =
+      await financialReportsServices.getPatientHospitalBillDetailsFromDB(id);
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      data: result,
+      message: "Retrived Indoor Due details",
+    });
+  }
+);
 
 export const financialReportsControllers = {
   getPaymentBydateAndreceiver,
@@ -78,4 +93,5 @@ export const financialReportsControllers = {
   getDailyCollection,
   getDueCollectionStatement,
   getPatientHospitalBillSummery,
+  getPatientHospitalBillDetails,
 };

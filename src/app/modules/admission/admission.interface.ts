@@ -2,8 +2,9 @@ import { Schema } from "mongoose";
 
 export type TPatientService = {
   serviceCategory: string;
-  seriveId: Schema.Types.ObjectId;
+  serviceId: Schema.Types.ObjectId;
   servicedBy: string;
+  quantity: number;
   amount: number;
   allocatedBed?: string;
   doctorId?: string;

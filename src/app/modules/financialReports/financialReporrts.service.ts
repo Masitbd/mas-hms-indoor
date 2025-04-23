@@ -776,10 +776,214 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
   return result;
 };
 
+// hospital bill details
+
+const getPatientHospitalBillDetailsFromDB = async (id: string) => {
+  // aggregate pipleline
+
+  const pipleLine: PipelineStage[] = [
+    // mathc
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(id),
+      },
+    },
+
+    // lookup bed info
+    {
+      $lookup: {
+        from: "beds",
+        localField: "allocatedBed",
+        foreignField: "_id",
+        as: "bedInfo",
+      },
+    },
+
+    {
+      $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true },
+    },
+
+    // Lookup world information from worldId in bedInfo
+    {
+      $lookup: {
+        from: "bedworlds",
+        localField: "bedInfo.worldId",
+        foreignField: "_id",
+        as: "worldInfo",
+      },
+    },
+
+    {
+      $unwind: { path: "$worldInfo", preserveNullAndEmptyArrays: true },
+    },
+    //
+
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "refDoct",
+        foreignField: "_id",
+        as: "doctInfo",
+      },
+    },
+
+    {
+      $unwind: { path: "$doctInfo", preserveNullAndEmptyArrays: true },
+    },
+
+    {
+      $addFields: {
+        admissionDateConverted: { $toDate: "$admissionDate" },
+        admissionTimeConverted: { $toDate: "$admissionTime" },
+
+        releaseDateConverted: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: ["$releaseDate", null] },
+                { $ne: ["$releaseDate", ""] },
+              ],
+            },
+            then: { $toDate: "$releaseDate" },
+            else: null,
+          },
+        },
+
+        billingEndDate: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: ["$releaseDate", null] },
+                { $ne: ["$releaseDate", ""] },
+              ],
+            },
+            then: { $toDate: "$releaseDate" },
+            else: "$$NOW",
+          },
+        },
+      },
+    },
+
+    // Calculate the number of full days stayed
+    {
+      $addFields: {
+        daysStayed: {
+          $add: [
+            {
+              $dateDiff: {
+                startDate: "$admissionDateConverted",
+                endDate: "$billingEndDate",
+                unit: "day",
+              },
+            },
+            {
+              $cond: {
+                if: {
+                  $gte: [{ $hour: "$admissionTimeConverted" }, 12],
+                },
+                then: 1,
+                else: 0,
+              },
+            },
+          ],
+        },
+      },
+    },
+    {
+      $addFields: {
+        bedCharge: {
+          $cond: {
+            if: { $gte: ["$daysStayed", 0] },
+            then: { $multiply: ["$daysStayed", "$worldInfo.fees"] },
+            else: 0,
+          },
+        },
+      },
+    },
+
+    // service unwind
+
+    {
+      $unwind: {
+        path: "$services",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // service group
+
+    {
+      $lookup: {
+        from: "tests", // collection where service/test names are stored
+        localField: "services.serviceId", // field from current doc
+        foreignField: "_id", // field in the tests collection
+        as: "testInfo",
+      },
+    },
+    {
+      $unwind: { path: "$testInfo", preserveNullAndEmptyArrays: true },
+    },
+
+    {
+      $group: {
+        _id: "$services.serviceCategory",
+
+        serviceTotal: { $sum: "$services.amount" },
+        serviceDate: { $first: "$services.createdAt" },
+        quantity: { $first: "$services.quantity" },
+        serviceAmount: { $first: "$services.amount" },
+        serviceName: { $first: "$testInfo.label" },
+        general: { $first: "$worldInfo.charge" },
+        regNo: { $first: "$regNo" },
+        name: { $first: "$name" },
+        age: { $first: "$age" },
+        gender: { $first: "$gender" },
+        guradin: { $first: "$fatherName" },
+        admissionDate: { $first: "$admissionDate" },
+        releaseDate: { $first: "$releaseDate" },
+        bedName: { $first: "$bedInfo.bedName" },
+        bedCharge: { $first: "$bedCharge" },
+        refDoct: { $first: "$doctInfo.name" },
+      },
+    },
+
+    // final group
+
+    {
+      $group: {
+        _id: null,
+        serviceSummary: {
+          $push: {
+            category: "$_id",
+            date: "$serviceDate",
+            serviceAmount: "$serviceAmount",
+            quantity: "$quantity",
+            name: "$serviceName",
+            total: "$serviceTotal",
+          },
+        },
+        general: { $first: "$general" },
+        regNo: { $first: "$regNo" },
+        name: { $first: "$name" },
+        age: { $first: "$age" },
+        gender: { $first: "$gender" },
+        guradin: { $first: "$guradin" },
+        admissionDate: { $first: "$admissionDate" },
+        releaseDate: { $first: "$releaseDate" },
+        bedName: { $first: "$bedName" },
+        bedCharge: { $first: "$bedCharge" },
+        refDoct: { $first: "$refDoct" },
+      },
+    },
+  ];
+  const result = await Admission.aggregate(pipleLine);
+  return result;
+};
+
 export const financialReportsServices = {
   getIndoorIncomeStatementFromDB,
   getDueStatementFromDB,
   getDailyCollectionFromDB,
   getDueCollectionStatementFromDB,
   getPatientHospitalBillSummeryFromDB,
+  getPatientHospitalBillDetailsFromDB,
 };

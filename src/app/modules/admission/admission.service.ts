@@ -97,12 +97,12 @@ const createAdmissionIntoDB = async (payload: any) => {
     const netPayable = netPrice + vat;
 
     //! token should be passed in future
-    await journalEntryService.postAdmissionJournalEntry({
-      due: netPayable - (payload?.paid ?? 0),
-      orderAmount: netPayable,
-      paid: payload?.paid ?? 0,
-      token: "test",
-    });
+    // await journalEntryService.postAdmissionJournalEntry({
+    //   due: netPayable - (payload?.paid ?? 0),
+    //   orderAmount: netPayable,
+    //   paid: payload?.paid ?? 0,
+    //   token: "test",
+    // });
     return result[0];
   } catch (error) {
     await session.abortTransaction();
@@ -759,10 +759,10 @@ const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
   const updated = await Admission.updateOne({ regNo }, updateData);
 
   // Post journal service
-  await journalEntryService.postJournalEntryForServiceAdd({
-    amount: payload.totalBill ?? 0,
-    token: "test",
-  });
+  // await journalEntryService.postJournalEntryForServiceAdd({
+  //   amount: payload.totalBill ?? 0,
+  //   token: "test",
+  // });
 
   return updated;
 };
