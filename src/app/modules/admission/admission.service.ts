@@ -97,12 +97,12 @@ const createAdmissionIntoDB = async (payload: any) => {
     const netPayable = netPrice + vat;
 
     //! token should be passed in future
-    // await journalEntryService.postAdmissionJournalEntry({
-    //   due: netPayable - (payload?.paid ?? 0),
-    //   orderAmount: netPayable,
-    //   paid: payload?.paid ?? 0,
-    //   token: "test",
-    // });
+    await journalEntryService.postAdmissionJournalEntry({
+      due: netPayable - (payload?.paid ?? 0),
+      orderAmount: netPayable,
+      paid: payload?.paid ?? 0,
+      token: "test",
+    });
     return result[0];
   } catch (error) {
     await session.abortTransaction();
@@ -283,35 +283,35 @@ const getAdmissionInfoFromDB = async (id: string) => {
     //   },
     // },
     {
-  $addFields: {
-    totalAmount: {
-      $add: [
-        // First part: Calculate the base amount based on days stayed
-        {
-          $cond: {
-            if: { $eq: ["$daysStayed", 0] },
-            then: "$worldInfo.charge",
-            else: {
-              $multiply: ["$daysStayed", "$worldInfo.fees"]
+      $addFields: {
+        totalAmount: {
+          $add: [
+            // First part: Calculate the base amount based on days stayed
+            {
+              $cond: {
+                if: { $eq: ["$daysStayed", 0] },
+                then: "$worldInfo.charge",
+                else: {
+                  $multiply: ["$daysStayed", "$worldInfo.fees"],
+                },
+              },
             },
-          },
+
+            {
+              $ifNull: ["$paymentInfo.serviceAmount", 0],
+            },
+
+            {
+              $cond: {
+                if: { $gt: ["$daysStayed", 0] },
+                then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                else: 0,
+              },
+            },
+          ],
         },
-    
-        {
-          $ifNull: ["$paymentInfo.serviceAmount", 0]
-        },
-        
-        {
-          $cond: {
-            if: { $gt: ["$daysStayed", 0] },
-            then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
-            else: 0
-          }
-        }
-      ],
+      },
     },
-  },
-},
 
     {
       $lookup: {
@@ -759,10 +759,10 @@ const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
   const updated = await Admission.updateOne({ regNo }, updateData);
 
   // Post journal service
-  // await journalEntryService.postJournalEntryForServiceAdd({
-  //   amount: payload.totalBill ?? 0,
-  //   token: "test",
-  // });
+  await journalEntryService.postJournalEntryForServiceAdd({
+    amount: payload.totalBill ?? 0,
+    token: "test",
+  });
 
   return updated;
 };
