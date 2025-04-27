@@ -654,6 +654,18 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
     },
 
     {
+      $lookup: {
+        from: "payments",
+        localField: "regNo",
+        foreignField: "patientRegNo",
+        as: "paymentInfo",
+      },
+    },
+    {
+      $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
+    },
+
+    {
       $addFields: {
         admissionDateConverted: { $toDate: "$admissionDate" },
         admissionTimeConverted: { $toDate: "$admissionTime" },
@@ -746,6 +758,7 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
         bedName: { $first: "$bedInfo.bedName" },
         bedCharge: { $first: "$bedCharge" },
         refDoct: { $first: "$doctInfo.name" },
+        totalPaid: { $first: "$paymentInfo.totalPaid" },
       },
     },
 
@@ -769,6 +782,7 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
         bedName: { $first: "$bedName" },
         bedCharge: { $first: "$bedCharge" },
         refDoct: { $first: "$refDoct" },
+        totalPaid: { $first: "$totalPaid" },
       },
     },
   ];
@@ -924,67 +938,28 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
 
     {
       $lookup: {
-        from: "tests", // collection where service/test names are stored
-        localField: "services.serviceIdObj", // field from current doc
-        foreignField: "_id", // field in the tests collection
+        from: "tests",
+        localField: "services.serviceIdObj",
+        foreignField: "_id",
         as: "testInfo",
       },
     },
     {
       $unwind: { path: "$testInfo", preserveNullAndEmptyArrays: true },
     },
+    // !
 
-    // {
-    //   $group: {
-    //     _id: "$services.serviceCategory",
-
-    //     serviceTotal: { $sum: "$services.amount" },
-    //     serviceDate: { $first: "$services.createdAt" },
-    //     quantity: { $sum: "$services.quantity" },
-    //     serviceAmount: { $first: "$services.amount" },
-    //     serviceName: { $first: "$testInfo.label" },
-    //     general: { $first: "$worldInfo.charge" },
-    //     regNo: { $first: "$regNo" },
-    //     name: { $first: "$name" },
-    //     age: { $first: "$age" },
-    //     gender: { $first: "$gender" },
-    //     guradin: { $first: "$fatherName" },
-    //     admissionDate: { $first: "$admissionDate" },
-    //     releaseDate: { $first: "$releaseDate" },
-    //     bedName: { $first: "$bedInfo.bedName" },
-    //     bedCharge: { $first: "$bedCharge" },
-    //     refDoct: { $first: "$doctInfo.name" },
-    //   },
-    // },
-
-    // // final group
-
-    // {
-    //   $group: {
-    //     _id: null,
-    //     serviceSummary: {
-    //       $push: {
-    //         category: "$_id",
-    //         date: "$serviceDate",
-    //         serviceAmount: "$serviceAmount",
-    //         quantity: "$quantity",
-    //         name: "$serviceName",
-    //         total: "$serviceTotal",
-    //       },
-    //     },
-    //     general: { $first: "$general" },
-    //     regNo: { $first: "$regNo" },
-    //     name: { $first: "$name" },
-    //     age: { $first: "$age" },
-    //     gender: { $first: "$gender" },
-    //     guradin: { $first: "$guradin" },
-    //     admissionDate: { $first: "$admissionDate" },
-    //     releaseDate: { $first: "$releaseDate" },
-    //     bedName: { $first: "$bedName" },
-    //     bedCharge: { $first: "$bedCharge" },
-    //     refDoct: { $first: "$refDoct" },
-    //   },
-    // },
+    {
+      $lookup: {
+        from: "payments",
+        localField: "regNo",
+        foreignField: "patientRegNo",
+        as: "paymentInfo",
+      },
+    },
+    {
+      $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
+    },
 
     {
       $group: {
@@ -1009,6 +984,7 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
         bedName: { $first: "$bedInfo.bedName" },
         bedCharge: { $first: "$bedCharge" },
         refDoct: { $first: "$doctInfo.name" },
+        totalPaid: { $first: "$paymentInfo.totalPaid" },
       },
     },
 
@@ -1031,6 +1007,7 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
         admissionDate: { $first: "$admissionDate" },
         releaseDate: { $first: "$releaseDate" },
         bedName: { $first: "$bedName" },
+        totalPaid: { $first: "$totalPaid" },
         bedCharge: { $first: "$bedCharge" },
         refDoct: { $first: "$refDoct" },
       },
@@ -1099,7 +1076,7 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
         as: "doctorInfo",
       },
     },
-    // Unwind doctor info
+
     {
       $unwind: {
         path: "$doctorInfo",
@@ -1107,7 +1084,6 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
       },
     },
 
-    // Lookup test/service information using the converted ObjectId
     {
       $lookup: {
         from: "tests",
@@ -1116,14 +1092,25 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
         as: "testInfo",
       },
     },
-    // Unwind test info
     {
       $unwind: {
         path: "$testInfo",
         preserveNullAndEmptyArrays: true,
       },
     },
-    // Project only needed fields
+
+    {
+      $lookup: {
+        from: "payments",
+        localField: "regNo",
+        foreignField: "patientRegNo",
+        as: "paymentInfo",
+      },
+    },
+    {
+      $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
+    },
+
     {
       $project: {
         _id: 0,
@@ -1135,6 +1122,7 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
         name: "$name",
         regNo: "$regNo",
         quantity: "$services.quantity",
+        totalPaid: "$paymentInfo.totalPaid",
 
         createdAt: "$services.createdAt",
       },

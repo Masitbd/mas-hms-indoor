@@ -283,35 +283,34 @@ const getAdmissionInfoFromDB = async (id: string) => {
     //   },
     // },
     {
-  $addFields: {
-    totalAmount: {
-      $add: [
-        // First part: Calculate the base amount based on days stayed
-        {
-          $cond: {
-            if: { $eq: ["$daysStayed", 0] },
-            then: "$worldInfo.charge",
-            else: {
-              $multiply: ["$daysStayed", "$worldInfo.fees"]
+      $addFields: {
+        totalAmount: {
+          $add: [
+            {
+              $cond: {
+                if: { $eq: ["$daysStayed", 0] },
+                then: "$worldInfo.charge",
+                else: {
+                  $multiply: ["$daysStayed", "$worldInfo.fees"],
+                },
+              },
             },
-          },
+
+            {
+              $ifNull: ["$paymentInfo.serviceAmount", 0],
+            },
+
+            {
+              $cond: {
+                if: { $gt: ["$daysStayed", 0] },
+                then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                else: 0,
+              },
+            },
+          ],
         },
-    
-        {
-          $ifNull: ["$paymentInfo.serviceAmount", 0]
-        },
-        
-        {
-          $cond: {
-            if: { $gt: ["$daysStayed", 0] },
-            then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
-            else: 0
-          }
-        }
-      ],
+      },
     },
-  },
-},
 
     {
       $lookup: {
@@ -700,71 +699,91 @@ const getAdmittedPatientOverAPeriodFromDB = async (
 // add service
 
 const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
-  const { regNo, services = [] } = payload;
+  const session = await mongoose.startSession();
 
-  if (!regNo || !services) {
-    throw new ApiError(400, "Need RegNo and Service");
-  }
+  // console.log(payload, "payload");
+  session.startTransaction();
+  try {
+    const { regNo, services = [] } = payload;
 
-  const incomingServiceIds = services.map((s) => s.serviceId);
+    if (!regNo || !services) {
+      throw new ApiError(400, "Need RegNo and Service");
+    }
 
-  const existing = await Admission.findOne(
-    {
-      regNo,
-      "services.serviceId": { $in: incomingServiceIds },
-    },
-    { "services.serviceId": 1 }
-  ).lean();
+    const incomingServiceIds = services.map((s) => s.serviceId);
 
-  const existingIdsSet = new Set(
-    (existing?.services || []).map((s: any) => s.serviceId.toString())
-  );
+    const existing = await Admission.findOne(
+      {
+        regNo,
+        "services.serviceId": { $in: incomingServiceIds },
+      },
+      { "services.serviceId": 1 }
+    ).lean();
 
-  const newServices = services.filter(
-    (s) => !existingIdsSet.has(s.serviceId.toString())
-  );
+    const existingIdsSet = new Set(
+      (existing?.services || []).map((s: any) => s.serviceId.toString())
+    );
 
-  if (newServices.length === 0) {
-    throw new ApiError(400, "Already Exist");
-  }
+    const newServices = services.filter(
+      (s) => !existingIdsSet.has(s.serviceId.toString())
+    );
 
-  const servicesToAdd = newServices.map((s) => ({
-    ...s,
-  }));
+    if (newServices.length === 0) {
+      throw new ApiError(400, "Already Exist");
+    }
 
-  await Bed.findByIdAndUpdate(
-    payload.allocatedBed,
-    { isAllocated: true },
-    { new: true }
-  );
+    const servicesToAdd = newServices.map((s) => ({
+      ...s,
+    }));
 
-  await Payment.findOneAndUpdate(
-    { patientRegNo: payload.regNo }, // or any other condition
-    { $inc: { serviceAmount: payload.totalBill } },
-    { new: true }
-  );
+    // Update bed allocation
+    if (payload.allocatedBed) {
+      await Bed.findByIdAndUpdate(
+        payload.allocatedBed,
+        { isAllocated: true },
+        { new: true, session }
+      );
+    }
 
-  const updateData: any = {
-    $push: { services: { $each: servicesToAdd } },
-  };
+    // Update Payment
+    await Payment.findOneAndUpdate(
+      { patientRegNo: payload.regNo },
+      { $inc: { serviceAmount: payload.totalBill } },
+      { new: true, session }
+    );
 
-  // Only add allocatedBed if it exists in payload
-  if (payload.allocatedBed) {
-    updateData.$set = {
-      allocatedBed: payload.allocatedBed,
+    const updateData: any = {
+      $push: { services: { $each: servicesToAdd } },
     };
+
+    if (payload.allocatedBed) {
+      updateData.$set = {
+        allocatedBed: payload.allocatedBed,
+      };
+    }
+
+    // Update Admission
+    const updated = await Admission.updateOne({ regNo }, updateData, {
+      session,
+    });
+
+    // If you want to post a journal entry after successful DB ops,
+    // move it **after commitTransaction()**
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // await journalEntryService.postJournalEntryForServiceAdd({
+    //   amount: payload.totalBill ?? 0,
+    //   token: "test",
+    // });
+
+    return updated;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  // Step 5: Push new services
-  const updated = await Admission.updateOne({ regNo }, updateData);
-
-  // Post journal service
-  // await journalEntryService.postJournalEntryForServiceAdd({
-  //   amount: payload.totalBill ?? 0,
-  //   token: "test",
-  // });
-
-  return updated;
 };
 
 export const AdmissionServices = {
