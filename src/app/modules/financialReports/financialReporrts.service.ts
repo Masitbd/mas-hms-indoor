@@ -80,7 +80,7 @@ const getIndoorIncomeStatementFromDB = async (query: Record<string, any>) => {
         discount: { $sum: "$paymentDiscount" },
 
         bedName: { $first: "$bedInfo.bedName" },
-        // totalBill: { $first: "$totalAmount" },
+
         totalPaid: { $first: "$totalPaid" },
         admissionDate: { $first: "$patientInfo.admissionDate" },
         releaseDate: { $first: "$patientInfo.releaseDate" },
@@ -365,13 +365,6 @@ const getDueCollectionStatementFromDB = async (query: Record<string, any>) => {
       },
     },
 
-    // 9. Calculate due amount
-    // {
-    //   $addFields: {
-    //     dueAmount: { $subtract: ["$totalBill", "$totalAmountPaid"] },
-    //   },
-    // },
-
     // 12. Final projection
     {
       $project: {
@@ -543,16 +536,32 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
     {
       $addFields: {
         totalAmount: {
-          $cond: {
-            if: { $eq: ["$daysStayed", 0] },
-            then: "$worldInfo.charge",
-            else: {
+          $subtract: [
+            {
               $add: [
-                { $multiply: ["$daysStayed", "$worldInfo.fees"] },
-                "$worldInfo.charge",
+                {
+                  $cond: {
+                    if: { $eq: ["$daysStayed", 0] },
+                    then: "$worldInfo.charge",
+                    else: {
+                      $multiply: ["$daysStayed", "$worldInfo.fees"],
+                    },
+                  },
+                },
+                {
+                  $ifNull: ["$paymentInfo.serviceAmount", 0],
+                },
+                {
+                  $cond: {
+                    if: { $gt: ["$daysStayed", 0] },
+                    then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                    else: 0,
+                  },
+                },
               ],
             },
-          },
+            { $ifNull: ["$paymentInfo.discountAmount", 0] },
+          ],
         },
       },
     },

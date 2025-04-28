@@ -77,9 +77,21 @@ const updatePaymentAUserIntoDB = async (
   return payment;
 };
 
+const updatePatientDiscountInfoDB = async (
+  patientRegNo: string,
+  payload: any
+) => {
+  return await Payment.findOneAndUpdate(
+    { patientRegNo: patientRegNo },
+    { $inc: { discountAmount: payload.discountAmount } },
+    { new: true }
+  );
+};
+
 // export
 
 export const PaymentServices = {
   getAllPayementInfoWithPatientInfoFromDB,
   updatePaymentAUserIntoDB,
+  updatePatientDiscountInfoDB,
 };

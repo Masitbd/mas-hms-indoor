@@ -28,6 +28,7 @@ const paymentSchema = new Schema<TPayments>(
     totalAmount: { type: Number, required: true, default: 0 },
     totalPaid: { type: Number, default: 0 },
     dueAmount: { type: Number, required: true, default: 0 },
+    discountAmount: { type: Number, default: 0 },
 
     payments: [paymentArray],
   },

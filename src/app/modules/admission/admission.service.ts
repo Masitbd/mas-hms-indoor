@@ -220,7 +220,6 @@ const getAdmissionInfoFromDB = async (id: string) => {
       },
     },
 
-
     {
       $addFields: {
         daysStayed: {
@@ -259,36 +258,67 @@ const getAdmissionInfoFromDB = async (id: string) => {
       $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
     },
 
+    // {
+    //   $addFields: {
+    //     totalAmount: {
+    //       $add: [
+    //         {
+    //           $cond: {
+    //             if: { $eq: ["$daysStayed", 0] },
+    //             then: "$worldInfo.charge",
+    //             else: {
+    //               $multiply: ["$daysStayed", "$worldInfo.fees"],
+    //             },
+    //           },
+    //         },
+
+    //         {
+    //           $ifNull: ["$paymentInfo.serviceAmount", 0],
+    //         },
+
+    //         {
+    //           $cond: {
+    //             if: { $gt: ["$daysStayed", 0] },
+    //             then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+    //             else: 0,
+    //           },
+    //         },
+    //       ],
+    //     },
+    //   },
+    // },
     {
       $addFields: {
         totalAmount: {
-          $add: [
+          $subtract: [
             {
-              $cond: {
-                if: { $eq: ["$daysStayed", 0] },
-                then: "$worldInfo.charge",
-                else: {
-                  $multiply: ["$daysStayed", "$worldInfo.fees"],
+              $add: [
+                {
+                  $cond: {
+                    if: { $eq: ["$daysStayed", 0] },
+                    then: "$worldInfo.charge",
+                    else: {
+                      $multiply: ["$daysStayed", "$worldInfo.fees"],
+                    },
+                  },
                 },
-              },
+                {
+                  $ifNull: ["$paymentInfo.serviceAmount", 0],
+                },
+                {
+                  $cond: {
+                    if: { $gt: ["$daysStayed", 0] },
+                    then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                    else: 0,
+                  },
+                },
+              ],
             },
-
-            {
-              $ifNull: ["$paymentInfo.serviceAmount", 0],
-            },
-
-            {
-              $cond: {
-                if: { $gt: ["$daysStayed", 0] },
-                then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
-                else: 0,
-              },
-            },
+            { $ifNull: ["$paymentInfo.discountAmount", 0] },
           ],
         },
       },
     },
-
     {
       $lookup: {
         from: "transferbeds",
@@ -364,32 +394,6 @@ const getAdmissionInfoFromDB = async (id: string) => {
         },
       },
     },
-
-    // Project only necessary fields
-    // {
-    //   $project: {
-    //     _id: 1,
-    //     allocatedBed: 1,
-    //     paymentId: 1,
-    //     allocatedBedDetails: 1,
-    //     totalAmount: 1,
-    //     daysStayed: 1,
-    //     "paymentInfo._id": 1,
-    //     "paymentInfo.totalAmount": 1,
-    //     "paymentInfo.totalPaid": 1,
-    //     "paymentInfo.dueAmount": 1,
-    //     "paymentInfo.payments": 1,
-    //     "paymentInfo.createdAt": 1,
-    //     admissionDate: 1,
-    //     admissionTime: 1,
-    //     regNo: 1,
-    //     name: 1,
-    //     status: 1,
-    //     isTransfer: 1,
-    //     transferInfo: 1,
-    //     services: 1,
-    //   },
-    // },
   ];
 
   const result = await Admission.aggregate(aggregatePipeline);

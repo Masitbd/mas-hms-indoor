@@ -16,6 +16,7 @@ export type TPayments = {
   totalAmount: number;
   totalPaid: number;
   dueAmount: number;
+  discountAmount: number;
   payments: TPaymentArray[];
   services: [TPatientService];
 };

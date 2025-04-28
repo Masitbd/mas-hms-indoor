@@ -31,10 +31,27 @@ const updatePaymentInfo = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+const updatePatientDiscount = catchAsync(
+  async (req: Request, res: Response) => {
+    const { patientRegNo } = req.params;
+
+    const result = await PaymentServices.updatePatientDiscountInfoDB(
+      patientRegNo,
+      req.body
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: status.OK,
+      message: "Payment updated sucessfully",
+      data: result,
+    });
+  }
+);
 
 // export
 
 export const PaymentControllers = {
   getAllPaymentInfo,
   updatePaymentInfo,
+  updatePatientDiscount,
 };
