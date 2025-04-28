@@ -220,7 +220,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
       },
     },
 
-    // Calculate the number of full days stayed
+
     {
       $addFields: {
         daysStayed: {
@@ -259,29 +259,6 @@ const getAdmissionInfoFromDB = async (id: string) => {
       $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
     },
 
-    // {
-    //   $addFields: {
-    //     totalAmount: {
-    //       $cond: {
-    //         if: { $eq: ["$daysStayed", 0] },
-    //         then: "$worldInfo.charge",
-
-    //         else: {
-    //           $add: [
-    //             { $multiply: ["$daysStayed", "$worldInfo.fees"] },
-    //             {
-    //               $ifNull: [
-    //                 "$paymentInfo.totalAmount",
-    //                 "$paymentInfoserviceAmount",
-    //                 0,
-    //               ],
-    //             },
-    //           ],
-    //         },
-    //       },
-    //     },
-    //   },
-    // },
     {
       $addFields: {
         totalAmount: {
@@ -321,30 +298,98 @@ const getAdmissionInfoFromDB = async (id: string) => {
       },
     },
 
-    // Project only necessary fields
     {
-      $project: {
-        _id: 1,
-        allocatedBed: 1,
-        paymentId: 1,
-        allocatedBedDetails: 1,
-        totalAmount: 1,
-        daysStayed: 1,
-        "paymentInfo._id": 1,
-        "paymentInfo.totalAmount": 1,
-        "paymentInfo.totalPaid": 1,
-        "paymentInfo.dueAmount": 1,
-        "paymentInfo.payments": 1,
-        "paymentInfo.createdAt": 1,
-        admissionDate: 1,
-        admissionTime: 1,
-        regNo: 1,
-        name: 1,
-        status: 1,
-        isTransfer: 1,
-        transferInfo: 1,
+      $unwind: { path: "$services", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $set: {
+        serviceObjectId: {
+          $cond: {
+            if: { $eq: [{ $type: "$services.serviceId" }, "string"] },
+            then: { $toObjectId: "$services.serviceId" },
+            else: "$services.serviceId", // if already ObjectId, keep as it is
+          },
+        },
       },
     },
+
+    {
+      $lookup: {
+        from: "tests",
+        localField: "serviceObjectId",
+        foreignField: "_id",
+        as: "serviceInfo",
+      },
+    },
+    { $unwind: { path: "$serviceInfo", preserveNullAndEmptyArrays: true } },
+
+    {
+      $addFields: {
+        "services.label": "$serviceInfo.label",
+      },
+    },
+
+    {
+      $group: {
+        _id: "$_id",
+        allocatedBed: { $first: "$allocatedBed" },
+        paymentId: { $first: "$paymentId" },
+        allocatedBedDetails: { $first: "$allocatedBedDetails" },
+        totalAmount: { $first: "$totalAmount" },
+        daysStayed: { $first: "$daysStayed" },
+        paymentInfo: { $first: "$paymentInfo" },
+        admissionDate: { $first: "$admissionDate" },
+        admissionTime: { $first: "$admissionTime" },
+        regNo: { $first: "$regNo" },
+        name: { $first: "$name" },
+        status: { $first: "$status" },
+        isTransfer: { $first: "$isTransfer" },
+        transferInfo: { $first: "$transferInfo" },
+
+        services: {
+          $push: {
+            $cond: {
+              if: { $ifNull: ["$services", false] },
+              then: {
+                _id: "$services._id",
+                serviceId: "$services.serviceId",
+                quantity: "$services.quantity",
+                rate: "$services.rate",
+                total: "$services.amount",
+                label: "$services.label",
+              },
+              else: "$$REMOVE",
+            },
+          },
+        },
+      },
+    },
+
+    // Project only necessary fields
+    // {
+    //   $project: {
+    //     _id: 1,
+    //     allocatedBed: 1,
+    //     paymentId: 1,
+    //     allocatedBedDetails: 1,
+    //     totalAmount: 1,
+    //     daysStayed: 1,
+    //     "paymentInfo._id": 1,
+    //     "paymentInfo.totalAmount": 1,
+    //     "paymentInfo.totalPaid": 1,
+    //     "paymentInfo.dueAmount": 1,
+    //     "paymentInfo.payments": 1,
+    //     "paymentInfo.createdAt": 1,
+    //     admissionDate: 1,
+    //     admissionTime: 1,
+    //     regNo: 1,
+    //     name: 1,
+    //     status: 1,
+    //     isTransfer: 1,
+    //     transferInfo: 1,
+    //     services: 1,
+    //   },
+    // },
   ];
 
   const result = await Admission.aggregate(aggregatePipeline);
