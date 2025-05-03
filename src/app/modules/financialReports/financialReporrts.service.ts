@@ -652,9 +652,17 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
     {
       $lookup: {
         from: "doctors",
-        localField: "refDoct",
+        localField: "assignDoct",
         foreignField: "_id",
         as: "doctInfo",
+      },
+    },
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "refDoct",
+        foreignField: "_id",
+        as: "refDoct",
       },
     },
 
@@ -761,12 +769,15 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
         general: { $first: "$worldInfo.charge" },
         regNo: { $first: "$regNo" },
         name: { $first: "$name" },
+        age: { $first: "$age" },
+        gender: { $first: "$gender" },
         guradin: { $first: "$fatherName" },
         admissionDate: { $first: "$admissionDate" },
         releaseDate: { $first: "$releaseDate" },
         bedName: { $first: "$bedInfo.bedName" },
         bedCharge: { $first: "$bedCharge" },
-        refDoct: { $first: "$doctInfo.name" },
+        assignDoct: { $first: "$doctInfo.name" },
+        refDoct: { $first: "$refDoct.code" },
         totalPaid: { $first: "$paymentInfo.totalPaid" },
       },
     },
@@ -785,11 +796,14 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
         general: { $first: "$general" },
         regNo: { $first: "$regNo" },
         name: { $first: "$name" },
+        age: { $first: "$age" },
+        gender: { $first: "$gender" },
         guradin: { $first: "$guradin" },
         admissionDate: { $first: "$admissionDate" },
         releaseDate: { $first: "$releaseDate" },
         bedName: { $first: "$bedName" },
         bedCharge: { $first: "$bedCharge" },
+        assignDoct: { $first: "$assignDoct" },
         refDoct: { $first: "$refDoct" },
         totalPaid: { $first: "$totalPaid" },
       },
@@ -844,9 +858,17 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
     {
       $lookup: {
         from: "doctors",
-        localField: "refDoct",
+        localField: "assignDoct",
         foreignField: "_id",
         as: "doctInfo",
+      },
+    },
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "refDoct",
+        foreignField: "_id",
+        as: "refDoct",
       },
     },
 
@@ -985,6 +1007,7 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
         general: { $first: "$worldInfo.charge" },
         regNo: { $first: "$regNo" },
         name: { $first: "$name" },
+
         age: { $first: "$age" },
         gender: { $first: "$gender" },
         guradin: { $first: "$fatherName" },
@@ -992,7 +1015,8 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
         releaseDate: { $first: "$releaseDate" },
         bedName: { $first: "$bedInfo.bedName" },
         bedCharge: { $first: "$bedCharge" },
-        refDoct: { $first: "$doctInfo.name" },
+        assignDoct: { $first: "$doctInfo.name" },
+        refDoct: { $first: "$refDoct.code" },
         totalPaid: { $first: "$paymentInfo.totalPaid" },
       },
     },
@@ -1012,12 +1036,13 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
         name: { $first: "$name" },
         age: { $first: "$age" },
         gender: { $first: "$gender" },
-        guradin: { $first: "$guradin" },
+        guardian: { $first: "$guradin" },
         admissionDate: { $first: "$admissionDate" },
         releaseDate: { $first: "$releaseDate" },
         bedName: { $first: "$bedName" },
         totalPaid: { $first: "$totalPaid" },
         bedCharge: { $first: "$bedCharge" },
+        assignDoct: { $first: "$assignDoct" },
         refDoct: { $first: "$refDoct" },
       },
     },
@@ -1050,6 +1075,24 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
         preserveNullAndEmptyArrays: true,
       },
     },
+
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "assignDoct",
+        foreignField: "_id",
+        as: "doctInfo",
+      },
+    },
+    {
+      $lookup: {
+        from: "doctors",
+        localField: "refDoct",
+        foreignField: "_id",
+        as: "refDoct",
+      },
+    },
+
     // Unwind services to work with them individually
     {
       $unwind: {
@@ -1129,10 +1172,13 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
         bedName: "$bedInfo.bedName",
         amount: "$services.amount",
         name: "$name",
+        age: "$age",
+        gender: "$gender",
         regNo: "$regNo",
         quantity: "$services.quantity",
         totalPaid: "$paymentInfo.totalPaid",
-
+        assignDoct: { $first: "$doctInfo.name" },
+        refDoct: { $first: "$refDoct.code" },
         createdAt: "$services.createdAt",
       },
     },
