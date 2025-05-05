@@ -75,6 +75,7 @@ const createAdmissionIntoDB = async (payload: any) => {
 
     payload.regNo = regNo;
     payload.paymentId = createPayment[0]._id;
+   
 
     const result = await Admission.create([{ ...payload }], { session });
 
@@ -115,7 +116,7 @@ const createAdmissionIntoDB = async (payload: any) => {
 
 const getAllAdmissionFromDB = async (query: Record<string, any>) => {
   const admissionQuery = new QueryBuilder(
-    Admission.find({ status: "admitted" })
+    Admission.find()
       .select("regNo name admissionDate admissionTime allocatedBed status")
       .populate("allocatedBed", "bedName"),
     query
