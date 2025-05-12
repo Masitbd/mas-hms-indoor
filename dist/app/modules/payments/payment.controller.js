@@ -37,8 +37,19 @@ const updatePaymentInfo = (0, catchAsync_1.default)((req, res) => __awaiter(void
         data: result,
     });
 }));
+const updatePatientDiscount = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { patientRegNo } = req.params;
+    const result = yield payment_service_1.PaymentServices.updatePatientDiscountInfoDB(patientRegNo, req.body);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Payment updated sucessfully",
+        data: result,
+    });
+}));
 // export
 exports.PaymentControllers = {
     getAllPaymentInfo,
     updatePaymentInfo,
+    updatePatientDiscount,
 };

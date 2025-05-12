@@ -1,5 +1,5 @@
 import { admissonSearchableFields } from "./admission.constance";
-import mongoose, { PipelineStage, Types } from "mongoose";
+import mongoose, { PipelineStage, Schema, Types } from "mongoose";
 import { generateRegId } from "../../utils/generateRegId";
 import { Bed } from "../beds/bed.model";
 import { Payment } from "../payments/payment.model";
@@ -11,6 +11,8 @@ import { TransferBed } from "../bedTransfer/bedTansfer.model";
 import ApiError from "../../../errors/ApiError";
 import { AccountService } from "../../../shared/axios";
 import { journalEntryService } from "../journal-entry/journalEntry.service";
+import axios from "axios";
+import { config } from "../../config";
 
 type TTransfer = {
   previousBed: string;
@@ -36,6 +38,9 @@ interface AddServicePayload {
   allocatedBed?: string;
   services: ServicePayload[];
   totalBill: number;
+  consultant: Schema.Types.ObjectId;
+  servicedBy: string;
+  refDoct: Schema.Types.ObjectId;
 }
 
 const createAdmissionIntoDB = async (payload: any) => {
@@ -359,6 +364,8 @@ const getAdmissionInfoFromDB = async (id: string) => {
         admissionDate: { $first: "$admissionDate" },
         admissionTime: { $first: "$admissionTime" },
         regNo: { $first: "$regNo" },
+        assignDoct: { $first: "$assignDoct" },
+        refDoct: { $first: "$refDoct" },
         name: { $first: "$name" },
         status: { $first: "$status" },
         isTransfer: { $first: "$isTransfer" },
@@ -735,10 +742,12 @@ const getAdmittedPatientOverAPeriodFromDB = async (
 
 // add service
 
-const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
+const addServicesToPatientIntoDB = async (
+  payload: AddServicePayload,
+  token: string
+) => {
   const session = await mongoose.startSession();
 
-  // console.log(payload, "payload");
   session.startTransaction();
   try {
     const { regNo, services = [] } = payload;
@@ -798,6 +807,57 @@ const addServicesToPatientIntoDB = async (payload: AddServicePayload) => {
         allocatedBed: payload.allocatedBed,
       };
     }
+
+    // ! added call order id here
+
+    const investigationServices = services?.filter(
+      (s) => s.serviceCategory === "investigation"
+    );
+
+    // Create `tests` array in your required format
+    const tests = investigationServices?.map((s, index) => ({
+      SL: index + 1,
+      test: s.serviceId, // or s.serviceId
+      status: "pending",
+      discount: s.discount || 0,
+      deliveryTime: null,
+      remark: "",
+    }));
+
+    // Calculate totalPrice from those services
+    const totalPrice = investigationServices?.reduce(
+      (sum, s) => sum + (s.amount || 0),
+      0
+    );
+
+    const orderPayload = {
+      tests,
+      totalPrice,
+      cashDiscount: 0,
+      parcentDiscount: 0,
+      deliveryTime: new Date(),
+      status: "pending",
+      dueAmount: 0,
+      paid: 0,
+      vat: 0,
+      refBy: payload.refDoct,
+      consultant: payload.consultant,
+      uuid: payload.regNo,
+      patientType: "registered",
+      discountedBy: "system",
+      postedBy: payload.servicedBy,
+      tubePrice: 0,
+    };
+
+    await axios.post(`${config.backend_url}/order`, orderPayload, {
+      headers: {
+        Authorization: token, // <-- your token here
+      },
+
+      withCredentials: true,
+    });
+
+    // ? end
 
     // Update Admission
     const updated = await Admission.updateOne({ regNo }, updateData, {

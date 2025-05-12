@@ -83,8 +83,7 @@ const updteAdmisison = (0, catchAsync_1.default)((req, res) => __awaiter(void 0,
     });
 }));
 const addServicesToPatient = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const result = yield admission_service_1.AdmissionServices.addServicesToPatientIntoDB(req.body);
+    const result = yield admission_service_1.AdmissionServices.addServicesToPatientIntoDB(req.body, req.token);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_1.default.OK,

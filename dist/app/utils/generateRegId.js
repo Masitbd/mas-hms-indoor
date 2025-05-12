@@ -18,7 +18,7 @@ const findLastRegId = () => __awaiter(void 0, void 0, void 0, function* () {
         _id: 0,
     })
         .sort({
-        createdAt: -1,
+        regNo: -1,
     })
         .lean();
     return (lastItem === null || lastItem === void 0 ? void 0 : lastItem.regNo) ? lastItem.regNo : undefined;
@@ -28,12 +28,11 @@ const generateRegId = () => __awaiter(void 0, void 0, void 0, function* () {
     const lastRegId = yield findLastRegId();
     if (lastRegId) {
         currentId = lastRegId.slice(-4);
-        console.log(currentId, "id");
     }
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);
     const month = ("0" + (date.getMonth() + 1)).slice(-2);
     const incrementId = (Number(currentId) + 1).toString().padStart(4, "0");
-    return `${year}${month}${incrementId}`;
+    return `I${year}${month}${incrementId}`;
 });
 exports.generateRegId = generateRegId;

@@ -23,8 +23,10 @@ const QueryBuilder_1 = __importDefault(require("../../builder/QueryBuilder"));
 const bedTansfer_model_1 = require("../bedTransfer/bedTansfer.model");
 const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const journalEntry_service_1 = require("../journal-entry/journalEntry.service");
+const axios_1 = __importDefault(require("axios"));
+const config_1 = require("../../config");
 const createAdmissionIntoDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c;
     const session = yield mongoose_1.default.startSession(); // Start transaction session
     session.startTransaction();
     try {
@@ -63,12 +65,12 @@ const createAdmissionIntoDB = (payload) => __awaiter(void 0, void 0, void 0, fun
         const vat = ((netPrice !== null && netPrice !== void 0 ? netPrice : 0) * ((_c = payload === null || payload === void 0 ? void 0 : payload.vat) !== null && _c !== void 0 ? _c : 0)) / 100;
         const netPayable = netPrice + vat;
         //! token should be passed in future
-        yield journalEntry_service_1.journalEntryService.postAdmissionJournalEntry({
-            due: netPayable - ((_d = payload === null || payload === void 0 ? void 0 : payload.paid) !== null && _d !== void 0 ? _d : 0),
-            orderAmount: netPayable,
-            paid: (_e = payload === null || payload === void 0 ? void 0 : payload.paid) !== null && _e !== void 0 ? _e : 0,
-            token: "test",
-        });
+        // await journalEntryService.postAdmissionJournalEntry({
+        //   due: netPayable - (payload?.paid ?? 0),
+        //   orderAmount: netPayable,
+        //   paid: payload?.paid ?? 0,
+        //   token: "test",
+        // });
         return result[0];
     }
     catch (error) {
@@ -79,7 +81,7 @@ const createAdmissionIntoDB = (payload) => __awaiter(void 0, void 0, void 0, fun
 });
 // ? get all admission
 const getAllAdmissionFromDB = (query) => __awaiter(void 0, void 0, void 0, function* () {
-    const admissionQuery = new QueryBuilder_1.default(admission_model_1.Admission.find({ status: "admitted" })
+    const admissionQuery = new QueryBuilder_1.default(admission_model_1.Admission.find()
         .select("regNo name admissionDate admissionTime allocatedBed status")
         .populate("allocatedBed", "bedName"), query)
         .search(admission_constance_1.admissonSearchableFields)
@@ -169,7 +171,6 @@ const getAdmissionInfoFromDB = (id) => __awaiter(void 0, void 0, void 0, functio
                 },
             },
         },
-        // Calculate the number of full days stayed
         {
             $addFields: {
                 daysStayed: {
@@ -206,15 +207,46 @@ const getAdmissionInfoFromDB = (id) => __awaiter(void 0, void 0, void 0, functio
             $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
         },
         {
+            $lookup: {
+                from: "packageitems",
+                localField: "fixedBill",
+                foreignField: "_id",
+                as: "packageItemInfo",
+            },
+        },
+        {
+            $unwind: { path: "$packageItemInfo", preserveNullAndEmptyArrays: true },
+        },
+        {
             $addFields: {
                 totalAmount: {
                     $cond: {
-                        if: { $eq: ["$daysStayed", 0] },
-                        then: "$worldInfo.charge",
+                        if: { $ne: ["$packageItemInfo", {}] },
+                        then: "$packageItemInfo.price",
                         else: {
-                            $add: [
-                                { $multiply: ["$daysStayed", "$worldInfo.fees"] },
-                                { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                            $subtract: [
+                                {
+                                    $add: [
+                                        {
+                                            $cond: {
+                                                if: { $eq: ["$daysStayed", 0] },
+                                                then: "$worldInfo.charge",
+                                                else: {
+                                                    $multiply: ["$daysStayed", "$worldInfo.fees"],
+                                                },
+                                            },
+                                        },
+                                        { $ifNull: ["$paymentInfo.serviceAmount", 0] },
+                                        {
+                                            $cond: {
+                                                if: { $gt: ["$daysStayed", 0] },
+                                                then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                                                else: 0,
+                                            },
+                                        },
+                                    ],
+                                },
+                                { $ifNull: ["$paymentInfo.discountAmount", 0] },
                             ],
                         },
                     },
@@ -229,28 +261,68 @@ const getAdmissionInfoFromDB = (id) => __awaiter(void 0, void 0, void 0, functio
                 as: "transferInfo",
             },
         },
-        // Project only necessary fields
         {
-            $project: {
-                _id: 1,
-                allocatedBed: 1,
-                paymentId: 1,
-                allocatedBedDetails: 1,
-                totalAmount: 1,
-                daysStayed: 1,
-                "paymentInfo._id": 1,
-                "paymentInfo.totalAmount": 1,
-                "paymentInfo.totalPaid": 1,
-                "paymentInfo.dueAmount": 1,
-                "paymentInfo.payments": 1,
-                "paymentInfo.createdAt": 1,
-                admissionDate: 1,
-                admissionTime: 1,
-                regNo: 1,
-                name: 1,
-                status: 1,
-                isTransfer: 1,
-                transferInfo: 1,
+            $unwind: { path: "$services", preserveNullAndEmptyArrays: true },
+        },
+        {
+            $set: {
+                serviceObjectId: {
+                    $cond: {
+                        if: { $eq: [{ $type: "$services.serviceId" }, "string"] },
+                        then: { $toObjectId: "$services.serviceId" },
+                        else: "$services.serviceId", // if already ObjectId, keep as it is
+                    },
+                },
+            },
+        },
+        {
+            $lookup: {
+                from: "tests",
+                localField: "serviceObjectId",
+                foreignField: "_id",
+                as: "serviceInfo",
+            },
+        },
+        { $unwind: { path: "$serviceInfo", preserveNullAndEmptyArrays: true } },
+        {
+            $addFields: {
+                "services.label": "$serviceInfo.label",
+            },
+        },
+        {
+            $group: {
+                _id: "$_id",
+                allocatedBed: { $first: "$allocatedBed" },
+                paymentId: { $first: "$paymentId" },
+                allocatedBedDetails: { $first: "$allocatedBedDetails" },
+                totalAmount: { $first: "$totalAmount" },
+                daysStayed: { $first: "$daysStayed" },
+                paymentInfo: { $first: "$paymentInfo" },
+                admissionDate: { $first: "$admissionDate" },
+                admissionTime: { $first: "$admissionTime" },
+                regNo: { $first: "$regNo" },
+                assignDoct: { $first: "$assignDoct" },
+                refDoct: { $first: "$refDoct" },
+                name: { $first: "$name" },
+                status: { $first: "$status" },
+                isTransfer: { $first: "$isTransfer" },
+                transferInfo: { $first: "$transferInfo" },
+                services: {
+                    $push: {
+                        $cond: {
+                            if: { $ifNull: ["$services", false] },
+                            then: {
+                                _id: "$services._id",
+                                serviceId: "$services.serviceId",
+                                quantity: "$services.quantity",
+                                rate: "$services.rate",
+                                total: "$services.amount",
+                                label: "$services.label",
+                            },
+                            else: "$$REMOVE",
+                        },
+                    },
+                },
             },
         },
     ];
@@ -276,13 +348,14 @@ const deleteAdmissionFromDB = (id) => __awaiter(void 0, void 0, void 0, function
 });
 //
 const realeasePatientFromDB = (option) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id, bedId } = option;
+    const { id, bedId, authorPerson } = option;
     const session = yield mongoose_1.default.startSession(); // Start transaction session
     session.startTransaction();
     try {
         const result = yield admission_model_1.Admission.findByIdAndUpdate(id, {
             status: "released",
             releaseDate: new Date().toISOString(),
+            authorPerson,
         }, { new: true, session });
         yield bed_model_1.Bed.findByIdAndUpdate(bedId, { isAllocated: false }, { new: true, session });
         yield session.commitTransaction();
@@ -534,43 +607,96 @@ const getAdmittedPatientOverAPeriodFromDB = (query) => __awaiter(void 0, void 0,
     return result;
 });
 // add service
-const addServicesToPatientIntoDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const { regNo, services = [] } = payload;
-    if (!regNo || !services) {
-        throw new ApiError_1.default(400, "Need RegNo and Service");
-    }
-    const incomingServiceIds = services.map((s) => s.serviceId);
-    const existing = yield admission_model_1.Admission.findOne({
-        regNo,
-        "services.serviceId": { $in: incomingServiceIds },
-    }, { "services.serviceId": 1 }).lean();
-    const existingIdsSet = new Set(((existing === null || existing === void 0 ? void 0 : existing.services) || []).map((s) => s.serviceId.toString()));
-    const newServices = services.filter((s) => !existingIdsSet.has(s.serviceId.toString()));
-    if (newServices.length === 0) {
-        throw new ApiError_1.default(400, "Already Exist");
-    }
-    const servicesToAdd = newServices.map((s) => (Object.assign({}, s)));
-    yield bed_model_1.Bed.findByIdAndUpdate(payload.allocatedBed, { isAllocated: true }, { new: true });
-    yield payment_model_1.Payment.findOneAndUpdate({ patientRegNo: payload.regNo }, // or any other condition
-    { $inc: { serviceAmount: payload.totalBill } }, { new: true });
-    const updateData = {
-        $push: { services: { $each: servicesToAdd } },
-    };
-    // Only add allocatedBed if it exists in payload
-    if (payload.allocatedBed) {
-        updateData.$set = {
-            allocatedBed: payload.allocatedBed,
+const addServicesToPatientIntoDB = (payload, token) => __awaiter(void 0, void 0, void 0, function* () {
+    const session = yield mongoose_1.default.startSession();
+    session.startTransaction();
+    try {
+        const { regNo, services = [] } = payload;
+        if (!regNo || !services) {
+            throw new ApiError_1.default(400, "Need RegNo and Service");
+        }
+        const incomingServiceIds = services.map((s) => s.serviceId);
+        const existing = yield admission_model_1.Admission.findOne({
+            regNo,
+            "services.serviceId": { $in: incomingServiceIds },
+        }, { "services.serviceId": 1 }).lean();
+        const existingIdsSet = new Set(((existing === null || existing === void 0 ? void 0 : existing.services) || []).map((s) => s.serviceId.toString()));
+        const newServices = services.filter((s) => !existingIdsSet.has(s.serviceId.toString()));
+        if (newServices.length === 0) {
+            throw new ApiError_1.default(400, "Already Exist");
+        }
+        const servicesToAdd = newServices.map((s) => (Object.assign({}, s)));
+        // Update bed allocation
+        if (payload.allocatedBed) {
+            yield bed_model_1.Bed.findByIdAndUpdate(payload.allocatedBed, { isAllocated: true }, { new: true, session });
+        }
+        // Update Payment
+        yield payment_model_1.Payment.findOneAndUpdate({ patientRegNo: payload.regNo }, { $inc: { serviceAmount: payload.totalBill } }, { new: true, session });
+        const updateData = {
+            $push: { services: { $each: servicesToAdd } },
         };
+        if (payload.allocatedBed) {
+            updateData.$set = {
+                allocatedBed: payload.allocatedBed,
+            };
+        }
+        // ! added call order id here
+        const investigationServices = services === null || services === void 0 ? void 0 : services.filter((s) => s.serviceCategory === "investigation");
+        // Create `tests` array in your required format
+        const tests = investigationServices === null || investigationServices === void 0 ? void 0 : investigationServices.map((s, index) => ({
+            SL: index + 1,
+            test: s.serviceId, // or s.serviceId
+            status: "pending",
+            discount: s.discount || 0,
+            deliveryTime: null,
+            remark: "",
+        }));
+        // Calculate totalPrice from those services
+        const totalPrice = investigationServices === null || investigationServices === void 0 ? void 0 : investigationServices.reduce((sum, s) => sum + (s.amount || 0), 0);
+        const orderPayload = {
+            tests,
+            totalPrice,
+            cashDiscount: 0,
+            parcentDiscount: 0,
+            deliveryTime: new Date(),
+            status: "pending",
+            dueAmount: 0,
+            paid: 0,
+            vat: 0,
+            refBy: payload.refDoct,
+            consultant: payload.consultant,
+            uuid: payload.regNo,
+            patientType: "registered",
+            discountedBy: "system",
+            postedBy: payload.servicedBy,
+            tubePrice: 0,
+        };
+        yield axios_1.default.post(`${config_1.config.backend_url}/order`, orderPayload, {
+            headers: {
+                Authorization: token, // <-- your token here
+            },
+            withCredentials: true,
+        });
+        // ? end
+        // Update Admission
+        const updated = yield admission_model_1.Admission.updateOne({ regNo }, updateData, {
+            session,
+        });
+        // If you want to post a journal entry after successful DB ops,
+        // move it **after commitTransaction()**
+        yield session.commitTransaction();
+        session.endSession();
+        // await journalEntryService.postJournalEntryForServiceAdd({
+        //   amount: payload.totalBill ?? 0,
+        //   token: "test",
+        // });
+        return updated;
     }
-    // Step 5: Push new services
-    const updated = yield admission_model_1.Admission.updateOne({ regNo }, updateData);
-    // Post journal service
-    yield journalEntry_service_1.journalEntryService.postJournalEntryForServiceAdd({
-        amount: (_a = payload.totalBill) !== null && _a !== void 0 ? _a : 0,
-        token: "test",
-    });
-    return updated;
+    catch (error) {
+        yield session.abortTransaction();
+        session.endSession();
+        throw error;
+    }
 });
 exports.AdmissionServices = {
     getAdmissionInfoFromDB,

@@ -53,9 +53,42 @@ const getDueStatement = (0, catchAsync_1.default)((req, res) => __awaiter(void 0
         message: "Retrived Indoor Due details",
     });
 }));
+const getPatientHospitalBillSummery = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const result = yield financialReporrts_service_1.financialReportsServices.getPatientHospitalBillSummeryFromDB(id);
+    (0, sendResponse_1.default)(res, {
+        statusCode: 200,
+        success: true,
+        data: result,
+        message: "Retrived Indoor Due details",
+    });
+}));
+const getPatientHospitalBillDetails = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const result = yield financialReporrts_service_1.financialReportsServices.getPatientHospitalBillDetailsFromDB(id);
+    (0, sendResponse_1.default)(res, {
+        statusCode: 200,
+        success: true,
+        data: result,
+        message: "Retrived Indoor Due details",
+    });
+}));
+const getPatientDoctorBills = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const result = yield financialReporrts_service_1.financialReportsServices.getPatientDoctorBillsFromDB(id);
+    (0, sendResponse_1.default)(res, {
+        statusCode: 200,
+        success: true,
+        data: result,
+        message: "Retrived doctor bills details",
+    });
+}));
 exports.financialReportsControllers = {
     getPaymentBydateAndreceiver,
     getDueStatement,
     getDailyCollection,
-    getDueCollectionStatement
+    getDueCollectionStatement,
+    getPatientHospitalBillSummery,
+    getPatientHospitalBillDetails,
+    getPatientDoctorBills,
 };

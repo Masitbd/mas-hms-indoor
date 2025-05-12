@@ -48,8 +48,9 @@ const payment_model_1 = require("../payments/payment.model");
 const patientServiceSchema = new mongoose_1.Schema({
     serviceCategory: { type: String },
     allocatedBed: { type: String },
-    doctorId: { type: String },
-    seriveId: { type: String },
+    doctorId: { type: String, default: "" },
+    serviceId: { type: String },
+    quantity: { type: Number },
     servicedBy: { type: String },
     amount: { type: Number },
 }, {
@@ -96,6 +97,8 @@ const admissionSchema = new mongoose_1.Schema({
     paymentId: { type: mongoose_1.default.Types.ObjectId, ref: "Payment" },
     services: [patientServiceSchema],
     fixedBill: { type: mongoose_1.Schema.Types.ObjectId, ref: "PackageItem" },
+    authorPerson: { type: String },
+    receivedBy: { type: String, required: true },
 }, {
     timestamps: true,
 });

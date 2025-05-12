@@ -80,9 +80,11 @@ const updteAdmisison = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const addServicesToPatient = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const result = await AdmissionServices.addServicesToPatientIntoDB(req.body);
+const addServicesToPatient = catchAsync(async (req: any, res: Response) => {
+  const result = await AdmissionServices.addServicesToPatientIntoDB(
+    req.body,
+    req.token
+  );
   sendResponse(res, {
     success: true,
     statusCode: status.OK,

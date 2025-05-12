@@ -67,8 +67,12 @@ const updatePaymentAUserIntoDB = (regNo, payload) => __awaiter(void 0, void 0, v
     }
     return payment;
 });
+const updatePatientDiscountInfoDB = (patientRegNo, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    return yield payment_model_1.Payment.findOneAndUpdate({ patientRegNo: patientRegNo }, { $inc: { discountAmount: payload.discountAmount } }, { new: true });
+});
 // export
 exports.PaymentServices = {
     getAllPayementInfoWithPatientInfoFromDB,
     updatePaymentAUserIntoDB,
+    updatePatientDiscountInfoDB,
 };

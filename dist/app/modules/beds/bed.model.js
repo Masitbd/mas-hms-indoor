@@ -8,6 +8,7 @@ const bedSchema = new mongoose_1.Schema({
     phone: { type: String },
     floor: { type: String },
     worldId: { type: mongoose_1.Schema.Types.ObjectId, ref: "BedWorld" },
+    isDeleted: { type: Boolean, default: false },
 }, {
     timestamps: true,
 });

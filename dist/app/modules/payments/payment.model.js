@@ -23,6 +23,7 @@ const paymentSchema = new mongoose_1.Schema({
     totalAmount: { type: Number, required: true, default: 0 },
     totalPaid: { type: Number, default: 0 },
     dueAmount: { type: Number, required: true, default: 0 },
+    discountAmount: { type: Number, default: 0 },
     payments: [paymentArray],
 }, {
     timestamps: true,

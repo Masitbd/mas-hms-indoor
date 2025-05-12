@@ -8,8 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.financialReportsServices = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const payment_model_1 = require("../payments/payment.model");
 const admission_model_1 = require("../admission/admission.model");
 const getIndoorIncomeStatementFromDB = (query) => __awaiter(void 0, void 0, void 0, function* () {
@@ -81,7 +85,6 @@ const getIndoorIncomeStatementFromDB = (query) => __awaiter(void 0, void 0, void
                 amount: { $sum: "$paymentAmount" },
                 discount: { $sum: "$paymentDiscount" },
                 bedName: { $first: "$bedInfo.bedName" },
-                // totalBill: { $first: "$totalAmount" },
                 totalPaid: { $first: "$totalPaid" },
                 admissionDate: { $first: "$patientInfo.admissionDate" },
                 releaseDate: { $first: "$patientInfo.releaseDate" },
@@ -105,7 +108,7 @@ const getIndoorIncomeStatementFromDB = (query) => __awaiter(void 0, void 0, void
                         receivedBy: "$receivedBy",
                     },
                 },
-                totalAmountPaid: { $sum: "$amount" }, // Sum all patients' payments
+                totalAmountPaid: { $sum: "$amount" },
                 totalDiscount: { $sum: "$discount" },
                 totalBill: { $first: "$totalBill" },
                 totalPaid: { $first: "$totalPaid" },
@@ -336,12 +339,6 @@ const getDueCollectionStatementFromDB = (query) => __awaiter(void 0, void 0, voi
                 totalPaid: { $sum: "$totalPaid" },
             },
         },
-        // 9. Calculate due amount
-        // {
-        //   $addFields: {
-        //     dueAmount: { $subtract: ["$totalBill", "$totalAmountPaid"] },
-        //   },
-        // },
         // 12. Final projection
         {
             $project: {
@@ -500,16 +497,79 @@ const getDueStatementFromDB = (query) => __awaiter(void 0, void 0, void 0, funct
             },
         },
         // Calculate total amount based on days stayed
+        // {
+        //   $addFields: {
+        //     totalAmount: {
+        //       $subtract: [
+        //         {
+        //           $add: [
+        //             {
+        //               $cond: {
+        //                 if: { $eq: ["$daysStayed", 0] },
+        //                 then: "$worldInfo.charge",
+        //                 else: {
+        //                   $multiply: ["$daysStayed", "$worldInfo.fees"],
+        //                 },
+        //               },
+        //             },
+        //             {
+        //               $ifNull: ["$paymentInfo.serviceAmount", 0],
+        //             },
+        //             {
+        //               $cond: {
+        //                 if: { $gt: ["$daysStayed", 0] },
+        //                 then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+        //                 else: 0,
+        //               },
+        //             },
+        //           ],
+        //         },
+        //         { $ifNull: ["$paymentInfo.discountAmount", 0] },
+        //       ],
+        //     },
+        //   },
+        // },
+        {
+            $lookup: {
+                from: "packageitems",
+                localField: "fixedBill",
+                foreignField: "_id",
+                as: "packageItemInfo",
+            },
+        },
+        {
+            $unwind: { path: "$packageItemInfo", preserveNullAndEmptyArrays: true },
+        },
         {
             $addFields: {
                 totalAmount: {
                     $cond: {
-                        if: { $eq: ["$daysStayed", 0] },
-                        then: "$worldInfo.charge",
+                        if: { $ne: ["$packageItemInfo", {}] }, // if package info exists
+                        then: "$packageItemInfo.price", // use package price
                         else: {
-                            $add: [
-                                { $multiply: ["$daysStayed", "$worldInfo.fees"] },
-                                "$worldInfo.charge",
+                            $subtract: [
+                                {
+                                    $add: [
+                                        {
+                                            $cond: {
+                                                if: { $eq: ["$daysStayed", 0] },
+                                                then: "$worldInfo.charge",
+                                                else: {
+                                                    $multiply: ["$daysStayed", "$worldInfo.fees"],
+                                                },
+                                            },
+                                        },
+                                        { $ifNull: ["$paymentInfo.serviceAmount", 0] },
+                                        {
+                                            $cond: {
+                                                if: { $gt: ["$daysStayed", 0] },
+                                                then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                                                else: 0,
+                                            },
+                                        },
+                                    ],
+                                },
+                                { $ifNull: ["$paymentInfo.discountAmount", 0] },
                             ],
                         },
                     },
@@ -556,9 +616,544 @@ const getDueStatementFromDB = (query) => __awaiter(void 0, void 0, void 0, funct
     const result = yield admission_model_1.Admission.aggregate(pipeLine);
     return result;
 });
+// patient hospital bill summery
+const getPatientHospitalBillSummeryFromDB = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    // aggregate pipleline
+    const pipleLine = [
+        // mathc
+        {
+            $match: {
+                _id: new mongoose_1.default.Types.ObjectId(id),
+            },
+        },
+        // lookup bed info
+        {
+            $lookup: {
+                from: "beds",
+                localField: "allocatedBed",
+                foreignField: "_id",
+                as: "bedInfo",
+            },
+        },
+        {
+            $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true },
+        },
+        // Lookup world information from worldId in bedInfo
+        {
+            $lookup: {
+                from: "bedworlds",
+                localField: "bedInfo.worldId",
+                foreignField: "_id",
+                as: "worldInfo",
+            },
+        },
+        {
+            $unwind: { path: "$worldInfo", preserveNullAndEmptyArrays: true },
+        },
+        //
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "assignDoct",
+                foreignField: "_id",
+                as: "doctInfo",
+            },
+        },
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "refDoct",
+                foreignField: "_id",
+                as: "refDoct",
+            },
+        },
+        {
+            $unwind: { path: "$doctInfo", preserveNullAndEmptyArrays: true },
+        },
+        {
+            $lookup: {
+                from: "payments",
+                localField: "regNo",
+                foreignField: "patientRegNo",
+                as: "paymentInfo",
+            },
+        },
+        {
+            $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
+        },
+        {
+            $addFields: {
+                admissionDateConverted: { $toDate: "$admissionDate" },
+                admissionTimeConverted: { $toDate: "$admissionTime" },
+                releaseDateConverted: {
+                    $cond: {
+                        if: {
+                            $and: [
+                                { $ne: ["$releaseDate", null] },
+                                { $ne: ["$releaseDate", ""] },
+                            ],
+                        },
+                        then: { $toDate: "$releaseDate" },
+                        else: null,
+                    },
+                },
+                billingEndDate: {
+                    $cond: {
+                        if: {
+                            $and: [
+                                { $ne: ["$releaseDate", null] },
+                                { $ne: ["$releaseDate", ""] },
+                            ],
+                        },
+                        then: { $toDate: "$releaseDate" },
+                        else: "$$NOW",
+                    },
+                },
+            },
+        },
+        // Calculate the number of full days stayed
+        {
+            $addFields: {
+                daysStayed: {
+                    $add: [
+                        {
+                            $dateDiff: {
+                                startDate: "$admissionDateConverted",
+                                endDate: "$billingEndDate",
+                                unit: "day",
+                            },
+                        },
+                        {
+                            $cond: {
+                                if: {
+                                    $gte: [{ $hour: "$admissionTimeConverted" }, 12],
+                                },
+                                then: 1,
+                                else: 0,
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        {
+            $addFields: {
+                bedCharge: {
+                    $cond: {
+                        if: { $gte: ["$daysStayed", 0] },
+                        then: { $multiply: ["$daysStayed", "$worldInfo.fees"] },
+                        else: 0,
+                    },
+                },
+            },
+        },
+        // service unwind
+        {
+            $unwind: {
+                path: "$services",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        // service group
+        {
+            $group: {
+                _id: "$services.serviceCategory",
+                serviceTotal: { $sum: "$services.amount" },
+                general: { $first: "$worldInfo.charge" },
+                regNo: { $first: "$regNo" },
+                name: { $first: "$name" },
+                age: { $first: "$age" },
+                gender: { $first: "$gender" },
+                guradin: { $first: "$fatherName" },
+                admissionDate: { $first: "$admissionDate" },
+                releaseDate: { $first: "$releaseDate" },
+                bedName: { $first: "$bedInfo.bedName" },
+                bedCharge: { $first: "$bedCharge" },
+                assignDoct: { $first: "$doctInfo.name" },
+                refDoct: { $first: "$refDoct.code" },
+                totalPaid: { $first: "$paymentInfo.totalPaid" },
+            },
+        },
+        // final group
+        {
+            $group: {
+                _id: null,
+                serviceSummary: {
+                    $push: {
+                        category: "$_id",
+                        total: "$serviceTotal",
+                    },
+                },
+                general: { $first: "$general" },
+                regNo: { $first: "$regNo" },
+                name: { $first: "$name" },
+                age: { $first: "$age" },
+                gender: { $first: "$gender" },
+                guradin: { $first: "$guradin" },
+                admissionDate: { $first: "$admissionDate" },
+                releaseDate: { $first: "$releaseDate" },
+                bedName: { $first: "$bedName" },
+                bedCharge: { $first: "$bedCharge" },
+                assignDoct: { $first: "$assignDoct" },
+                refDoct: { $first: "$refDoct" },
+                totalPaid: { $first: "$totalPaid" },
+            },
+        },
+    ];
+    const result = yield admission_model_1.Admission.aggregate(pipleLine);
+    return result;
+});
+// hospital bill details
+const getPatientHospitalBillDetailsFromDB = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    // aggregate pipleline
+    const pipleLine = [
+        // mathc
+        {
+            $match: {
+                _id: new mongoose_1.default.Types.ObjectId(id),
+            },
+        },
+        // lookup bed info
+        {
+            $lookup: {
+                from: "beds",
+                localField: "allocatedBed",
+                foreignField: "_id",
+                as: "bedInfo",
+            },
+        },
+        {
+            $unwind: { path: "$bedInfo", preserveNullAndEmptyArrays: true },
+        },
+        // Lookup world information from worldId in bedInfo
+        {
+            $lookup: {
+                from: "bedworlds",
+                localField: "bedInfo.worldId",
+                foreignField: "_id",
+                as: "worldInfo",
+            },
+        },
+        {
+            $unwind: { path: "$worldInfo", preserveNullAndEmptyArrays: true },
+        },
+        //
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "assignDoct",
+                foreignField: "_id",
+                as: "doctInfo",
+            },
+        },
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "refDoct",
+                foreignField: "_id",
+                as: "refDoct",
+            },
+        },
+        {
+            $unwind: { path: "$doctInfo", preserveNullAndEmptyArrays: true },
+        },
+        {
+            $addFields: {
+                admissionDateConverted: { $toDate: "$admissionDate" },
+                admissionTimeConverted: { $toDate: "$admissionTime" },
+                releaseDateConverted: {
+                    $cond: {
+                        if: {
+                            $and: [
+                                { $ne: ["$releaseDate", null] },
+                                { $ne: ["$releaseDate", ""] },
+                            ],
+                        },
+                        then: { $toDate: "$releaseDate" },
+                        else: null,
+                    },
+                },
+                billingEndDate: {
+                    $cond: {
+                        if: {
+                            $and: [
+                                { $ne: ["$releaseDate", null] },
+                                { $ne: ["$releaseDate", ""] },
+                            ],
+                        },
+                        then: { $toDate: "$releaseDate" },
+                        else: "$$NOW",
+                    },
+                },
+            },
+        },
+        // Calculate the number of full days stayed
+        {
+            $addFields: {
+                daysStayed: {
+                    $add: [
+                        {
+                            $dateDiff: {
+                                startDate: "$admissionDateConverted",
+                                endDate: "$billingEndDate",
+                                unit: "day",
+                            },
+                        },
+                        {
+                            $cond: {
+                                if: {
+                                    $gte: [{ $hour: "$admissionTimeConverted" }, 12],
+                                },
+                                then: 1,
+                                else: 0,
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        {
+            $addFields: {
+                bedCharge: {
+                    $cond: {
+                        if: { $gte: ["$daysStayed", 0] },
+                        then: { $multiply: ["$daysStayed", "$worldInfo.fees"] },
+                        else: 0,
+                    },
+                },
+            },
+        },
+        // service unwind
+        {
+            $unwind: {
+                path: "$services",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        // service group
+        {
+            $addFields: {
+                "services.serviceIdObj": {
+                    $cond: {
+                        if: { $ne: ["$services.serviceId", ""] },
+                        then: { $toObjectId: "$services.serviceId" },
+                        else: null,
+                    },
+                },
+            },
+        },
+        {
+            $lookup: {
+                from: "tests",
+                localField: "services.serviceIdObj",
+                foreignField: "_id",
+                as: "testInfo",
+            },
+        },
+        {
+            $unwind: { path: "$testInfo", preserveNullAndEmptyArrays: true },
+        },
+        // !
+        {
+            $lookup: {
+                from: "payments",
+                localField: "regNo",
+                foreignField: "patientRegNo",
+                as: "paymentInfo",
+            },
+        },
+        {
+            $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
+        },
+        {
+            $group: {
+                _id: "$services.serviceCategory",
+                services: {
+                    $push: {
+                        date: "$services.createdAt",
+                        serviceAmount: "$services.amount",
+                        quantity: "$services.quantity",
+                        name: "$testInfo.label",
+                        total: "$services.amount",
+                    },
+                },
+                general: { $first: "$worldInfo.charge" },
+                regNo: { $first: "$regNo" },
+                name: { $first: "$name" },
+                age: { $first: "$age" },
+                gender: { $first: "$gender" },
+                guradin: { $first: "$fatherName" },
+                admissionDate: { $first: "$admissionDate" },
+                releaseDate: { $first: "$releaseDate" },
+                bedName: { $first: "$bedInfo.bedName" },
+                bedCharge: { $first: "$bedCharge" },
+                assignDoct: { $first: "$doctInfo.name" },
+                refDoct: { $first: "$refDoct.code" },
+                totalPaid: { $first: "$paymentInfo.totalPaid" },
+            },
+        },
+        // Final grouping — combine all service categories
+        {
+            $group: {
+                _id: null,
+                groupedServices: {
+                    $push: {
+                        category: "$_id",
+                        services: "$services",
+                    },
+                },
+                general: { $first: "$general" },
+                regNo: { $first: "$regNo" },
+                name: { $first: "$name" },
+                age: { $first: "$age" },
+                gender: { $first: "$gender" },
+                guardian: { $first: "$guradin" },
+                admissionDate: { $first: "$admissionDate" },
+                releaseDate: { $first: "$releaseDate" },
+                bedName: { $first: "$bedName" },
+                totalPaid: { $first: "$totalPaid" },
+                bedCharge: { $first: "$bedCharge" },
+                assignDoct: { $first: "$assignDoct" },
+                refDoct: { $first: "$refDoct" },
+            },
+        },
+    ];
+    const result = yield admission_model_1.Admission.aggregate(pipleLine);
+    return result;
+});
+// patient doctor bill
+const getPatientDoctorBillsFromDB = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield admission_model_1.Admission.aggregate([
+        // Match the specific admission
+        {
+            $match: { _id: new mongoose_1.default.Types.ObjectId(id) },
+        },
+        // Lookup bed information
+        {
+            $lookup: {
+                from: "beds",
+                localField: "allocatedBed",
+                foreignField: "_id",
+                as: "bedInfo",
+            },
+        },
+        // Unwind bed info array to a single object
+        {
+            $unwind: {
+                path: "$bedInfo",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "assignDoct",
+                foreignField: "_id",
+                as: "doctInfo",
+            },
+        },
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "refDoct",
+                foreignField: "_id",
+                as: "refDoct",
+            },
+        },
+        // Unwind services to work with them individually
+        {
+            $unwind: {
+                path: "$services",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        // Filter only doctor's related services
+        {
+            $match: {
+                "services.serviceCategory": "doctor's related",
+            },
+        },
+        // Convert string IDs to ObjectIds for lookups
+        {
+            $addFields: {
+                "services.doctorIdObj": {
+                    $cond: {
+                        if: { $ne: ["$services.doctorId", ""] },
+                        then: { $toObjectId: "$services.doctorId" },
+                        else: null,
+                    },
+                },
+                "services.serviceIdObj": { $toObjectId: "$services.serviceId" },
+            },
+        },
+        // Lookup doctor information using the converted ObjectId
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "services.doctorIdObj",
+                foreignField: "_id",
+                as: "doctorInfo",
+            },
+        },
+        {
+            $unwind: {
+                path: "$doctorInfo",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        {
+            $lookup: {
+                from: "tests",
+                localField: "services.serviceIdObj",
+                foreignField: "_id",
+                as: "testInfo",
+            },
+        },
+        {
+            $unwind: {
+                path: "$testInfo",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        {
+            $lookup: {
+                from: "payments",
+                localField: "regNo",
+                foreignField: "patientRegNo",
+                as: "paymentInfo",
+            },
+        },
+        {
+            $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
+        },
+        {
+            $project: {
+                _id: 0,
+                doctorName: "$doctorInfo.name",
+                speciality: "$doctorInfo.speciality",
+                visitType: "$testInfo.label",
+                bedName: "$bedInfo.bedName",
+                amount: "$services.amount",
+                name: "$name",
+                age: "$age",
+                gender: "$gender",
+                regNo: "$regNo",
+                quantity: "$services.quantity",
+                totalPaid: "$paymentInfo.totalPaid",
+                assignDoct: { $first: "$doctInfo.name" },
+                refDoct: { $first: "$refDoct.code" },
+                createdAt: "$services.createdAt",
+            },
+        },
+    ]);
+    return result;
+});
 exports.financialReportsServices = {
     getIndoorIncomeStatementFromDB,
     getDueStatementFromDB,
     getDailyCollectionFromDB,
     getDueCollectionStatementFromDB,
+    getPatientHospitalBillSummeryFromDB,
+    getPatientHospitalBillDetailsFromDB,
+    getPatientDoctorBillsFromDB,
 };

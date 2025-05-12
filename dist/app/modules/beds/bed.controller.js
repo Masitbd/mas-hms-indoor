@@ -35,13 +35,12 @@ const getAllBeds = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, voi
         data: result,
     });
 }));
-const getSingleBed = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const result = yield bed_service_1.BedServices.getBedByWorldNameAndAvailablityFromDB(id);
+const getAllBedsForAdmin = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield bed_service_1.BedServices.getAllBedsForAdminFromDB(req.query);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_1.default.OK,
-        message: "Bed Retrived Successfully",
+        message: "Bed Retrived for admin Successfully",
         data: result,
     });
 }));
@@ -68,7 +67,7 @@ const deleteBed = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void
 exports.BedControllers = {
     createBed,
     getAllBeds,
-    getSingleBed,
+    getAllBedsForAdmin,
     updateBed,
     deleteBed,
 };

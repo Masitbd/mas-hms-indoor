@@ -8,4 +8,7 @@ router.get("/", financialReports_Controller_1.financialReportsControllers.getPay
 router.get("/due-collection", financialReports_Controller_1.financialReportsControllers.getDueStatement);
 router.get("/due-collection-statement", financialReports_Controller_1.financialReportsControllers.getDueCollectionStatement);
 router.get("/daily-collection-details", financialReports_Controller_1.financialReportsControllers.getDailyCollection);
+router.get("/hospital-bill-summery/:id", financialReports_Controller_1.financialReportsControllers.getPatientHospitalBillSummery);
+router.get("/hospital-bill-details/:id", financialReports_Controller_1.financialReportsControllers.getPatientHospitalBillDetails);
+router.get("/doctor-bills/:id", financialReports_Controller_1.financialReportsControllers.getPatientDoctorBills);
 exports.financialRoutes = router;

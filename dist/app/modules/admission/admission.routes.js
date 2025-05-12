@@ -1,8 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdmissionRoutes = void 0;
 const express_1 = require("express");
 const admission_controller_1 = require("./admission.controller");
+const auth_1 = __importDefault(require("../../middleware/auth"));
+const userPermissions_1 = require("../../enum/userPermissions");
 const router = (0, express_1.Router)();
 router.post("/", admission_controller_1.AdmissionControllers.createAdmission);
 router.post("/release", admission_controller_1.AdmissionControllers.releasePatient);
@@ -10,7 +15,7 @@ router.get("/", admission_controller_1.AdmissionControllers.getAllAdmissionInfo)
 router.get("/today-admit", admission_controller_1.AdmissionControllers.getTodayAdmitPatients);
 router.get("/admit-overperiod", admission_controller_1.AdmissionControllers.getAdmitPatientsOverAPeriod);
 router.patch("/transfer", admission_controller_1.AdmissionControllers.transferPatientBed);
-router.patch("/add-service", admission_controller_1.AdmissionControllers.addServicesToPatient);
+router.patch("/add-service", (0, auth_1.default)(userPermissions_1.ENUM_USER_PEMISSION.MANAGE_ORDER), admission_controller_1.AdmissionControllers.addServicesToPatient);
 router.get("/:id", admission_controller_1.AdmissionControllers.getAdmissionInfo);
 router.patch("/:id", admission_controller_1.AdmissionControllers.updteAdmisison);
 router.delete("/:id", admission_controller_1.AdmissionControllers.deleteAdmission);

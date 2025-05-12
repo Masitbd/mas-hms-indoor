@@ -24,7 +24,6 @@ export const generateRegId = async () => {
 
   if (lastRegId) {
     currentId = lastRegId.slice(-4);
-   
   }
 
   const date = new Date();
@@ -33,5 +32,5 @@ export const generateRegId = async () => {
 
   const incrementId = (Number(currentId) + 1).toString().padStart(4, "0");
 
-  return `${year}${month}${incrementId}`;
+  return `I${year}${month}${incrementId}`;
 };
