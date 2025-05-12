@@ -11,7 +11,7 @@ const findLastRegId = async () => {
     }
   )
     .sort({
-      createdAt: -1,
+      regNo: -1,
     })
     .lean();
 
@@ -24,7 +24,7 @@ export const generateRegId = async () => {
 
   if (lastRegId) {
     currentId = lastRegId.slice(-4);
-    console.log(currentId, "id");
+   
   }
 
   const date = new Date();

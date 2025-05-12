@@ -105,7 +105,7 @@ const getIndoorIncomeStatementFromDB = async (query: Record<string, any>) => {
             receivedBy: "$receivedBy",
           },
         },
-        totalAmountPaid: { $sum: "$amount" }, // Sum all patients' payments
+        totalAmountPaid: { $sum: "$amount" },
         totalDiscount: { $sum: "$discount" },
         totalBill: { $first: "$totalBill" },
         totalPaid: { $first: "$totalPaid" },
@@ -533,38 +533,87 @@ const getDueStatementFromDB = async (query: Record<string, any>) => {
       },
     },
     // Calculate total amount based on days stayed
+    // {
+    //   $addFields: {
+    //     totalAmount: {
+    //       $subtract: [
+    //         {
+    //           $add: [
+    //             {
+    //               $cond: {
+    //                 if: { $eq: ["$daysStayed", 0] },
+    //                 then: "$worldInfo.charge",
+    //                 else: {
+    //                   $multiply: ["$daysStayed", "$worldInfo.fees"],
+    //                 },
+    //               },
+    //             },
+    //             {
+    //               $ifNull: ["$paymentInfo.serviceAmount", 0],
+    //             },
+    //             {
+    //               $cond: {
+    //                 if: { $gt: ["$daysStayed", 0] },
+    //                 then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+    //                 else: 0,
+    //               },
+    //             },
+    //           ],
+    //         },
+    //         { $ifNull: ["$paymentInfo.discountAmount", 0] },
+    //       ],
+    //     },
+    //   },
+    // },
+    {
+      $lookup: {
+        from: "packageitems",
+        localField: "fixedBill",
+        foreignField: "_id",
+        as: "packageItemInfo",
+      },
+    },
+    {
+      $unwind: { path: "$packageItemInfo", preserveNullAndEmptyArrays: true },
+    },
+
     {
       $addFields: {
         totalAmount: {
-          $subtract: [
-            {
-              $add: [
+          $cond: {
+            if: { $ne: ["$packageItemInfo", {}] }, // if package info exists
+            then: "$packageItemInfo.price", // use package price
+            else: {
+              $subtract: [
                 {
-                  $cond: {
-                    if: { $eq: ["$daysStayed", 0] },
-                    then: "$worldInfo.charge",
-                    else: {
-                      $multiply: ["$daysStayed", "$worldInfo.fees"],
+                  $add: [
+                    {
+                      $cond: {
+                        if: { $eq: ["$daysStayed", 0] },
+                        then: "$worldInfo.charge",
+                        else: {
+                          $multiply: ["$daysStayed", "$worldInfo.fees"],
+                        },
+                      },
                     },
-                  },
+                    { $ifNull: ["$paymentInfo.serviceAmount", 0] },
+                    {
+                      $cond: {
+                        if: { $gt: ["$daysStayed", 0] },
+                        then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
+                        else: 0,
+                      },
+                    },
+                  ],
                 },
-                {
-                  $ifNull: ["$paymentInfo.serviceAmount", 0],
-                },
-                {
-                  $cond: {
-                    if: { $gt: ["$daysStayed", 0] },
-                    then: { $ifNull: ["$paymentInfo.totalAmount", 0] },
-                    else: 0,
-                  },
-                },
+                { $ifNull: ["$paymentInfo.discountAmount", 0] },
               ],
             },
-            { $ifNull: ["$paymentInfo.discountAmount", 0] },
-          ],
+          },
         },
       },
     },
+
     // Calculate due amount
     {
       $addFields: {
