@@ -371,6 +371,7 @@ const getAdmissionInfoFromDB = async (id: string) => {
         regNo: { $first: "$regNo" },
         age: { $first: "$age" },
         patientType: { $first: "$patientType" },
+        phone: { $first: "$phone" },
         uuid: { $first: "$uuid" },
         gender: { $first: "$gender" },
         address: { $first: "$presentAddress" },
@@ -859,8 +860,6 @@ const addServicesToPatientIntoDB = async (
         tubePrice: 0,
         patient: payload.patient,
       };
-
-
 
       await axios.post(`${config.backend_url}/order`, orderPayload, {
         headers: {
