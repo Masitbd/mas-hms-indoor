@@ -43,4 +43,6 @@ export type TPAdmission = {
   fixedBill: Schema.Types.ObjectId;
   authorPerson: string;
   receivedBy: string;
+  patientType?: string;
+  uuid?: string;
 };

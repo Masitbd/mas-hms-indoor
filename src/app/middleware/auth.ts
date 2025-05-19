@@ -24,7 +24,7 @@ const auth =
 
       verifiedUser = jwtHelpers.verifyToken(token, config.jwt.secret as Secret);
 
-      req.user = verifiedUser; // role  , userid
+      req.user = verifiedUser; 
       req.token = token;
       if (
         verifiedUser?.permissions?.includes(ENUM_USER_PEMISSION.SUPER_ADMIN)

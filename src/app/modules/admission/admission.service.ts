@@ -814,7 +814,6 @@ const addServicesToPatientIntoDB = async (
       (s) => s.serviceCategory === "investigation"
     );
 
-    // Create `tests` array in your required format
     const tests = investigationServices?.map((s, index) => ({
       SL: index + 1,
       test: s.serviceId, // or s.serviceId
@@ -824,7 +823,7 @@ const addServicesToPatientIntoDB = async (
       remark: "",
     }));
 
-    // Calculate totalPrice from those services
+   
     const totalPrice = investigationServices?.reduce(
       (sum, s) => sum + (s.amount || 0),
       0
@@ -851,7 +850,7 @@ const addServicesToPatientIntoDB = async (
 
     await axios.post(`${config.backend_url}/order`, orderPayload, {
       headers: {
-        Authorization: token, // <-- your token here
+        Authorization: token, 
       },
 
       withCredentials: true,

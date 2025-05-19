@@ -63,6 +63,8 @@ const admissionSchema = new Schema<TPAdmission>(
     fixedBill: { type: Schema.Types.ObjectId, ref: "PackageItem" },
     authorPerson: { type: String },
     receivedBy: { type: String, required: true },
+    patientType: { type: String },
+    uuid: { type: String },
   },
   {
     timestamps: true,
