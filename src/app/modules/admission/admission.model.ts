@@ -65,6 +65,7 @@ const admissionSchema = new Schema<TPAdmission>(
     receivedBy: { type: String, required: true },
     patientType: { type: String },
     uuid: { type: String },
+    phone: { type: String },
   },
   {
     timestamps: true,

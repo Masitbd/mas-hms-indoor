@@ -860,7 +860,7 @@ const addServicesToPatientIntoDB = async (
         patient: payload.patient,
       };
 
-      console.log(investigationServices, "int");
+
 
       await axios.post(`${config.backend_url}/order`, orderPayload, {
         headers: {
