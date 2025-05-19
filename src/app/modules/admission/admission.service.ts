@@ -34,6 +34,9 @@ interface ServicePayload {
 
 // Main payload from frontend
 interface AddServicePayload {
+  uuid: any;
+  patientType: any;
+  patient: any;
   regNo: string;
   allocatedBed?: string;
   services: ServicePayload[];
@@ -44,6 +47,7 @@ interface AddServicePayload {
 }
 
 const createAdmissionIntoDB = async (payload: any) => {
+  console.log(payload, "payload");
   const session = await mongoose.startSession(); // Start transaction session
   session.startTransaction();
 
@@ -80,8 +84,9 @@ const createAdmissionIntoDB = async (payload: any) => {
 
     payload.regNo = regNo;
     payload.paymentId = createPayment[0]._id;
+    const { _id, createdAt, updatedAt, ...cleanPayload } = payload;
 
-    const result = await Admission.create([{ ...payload }], { session });
+    const result = await Admission.create([{ ...cleanPayload }], { session });
 
     await Bed.findByIdAndUpdate(
       payload.allocatedBed,
@@ -364,6 +369,11 @@ const getAdmissionInfoFromDB = async (id: string) => {
         admissionDate: { $first: "$admissionDate" },
         admissionTime: { $first: "$admissionTime" },
         regNo: { $first: "$regNo" },
+        age: { $first: "$age" },
+        patientType: { $first: "$patientType" },
+        uuid: { $first: "$uuid" },
+        gender: { $first: "$gender" },
+        address: { $first: "$presentAddress" },
         assignDoct: { $first: "$assignDoct" },
         refDoct: { $first: "$refDoct" },
         name: { $first: "$name" },
@@ -814,47 +824,51 @@ const addServicesToPatientIntoDB = async (
       (s) => s.serviceCategory === "investigation"
     );
 
-    const tests = investigationServices?.map((s, index) => ({
-      SL: index + 1,
-      test: s.serviceId, // or s.serviceId
-      status: "pending",
-      discount: s.discount || 0,
-      deliveryTime: null,
-      remark: "",
-    }));
+    if (investigationServices && investigationServices.length > 0) {
+      const tests = investigationServices.map((s, index) => ({
+        SL: index + 1,
+        test: s.serviceId,
+        status: "pending",
+        discount: s.discount || 0,
+        deliveryTime: null,
+        remark: "",
+      }));
 
-   
-    const totalPrice = investigationServices?.reduce(
-      (sum, s) => sum + (s.amount || 0),
-      0
-    );
+      const totalPrice = investigationServices.reduce(
+        (sum, s) => sum + (s.amount || 0),
+        0
+      );
 
-    const orderPayload = {
-      tests,
-      totalPrice,
-      cashDiscount: 0,
-      parcentDiscount: 0,
-      deliveryTime: new Date(),
-      status: "pending",
-      dueAmount: 0,
-      paid: 0,
-      vat: 0,
-      refBy: payload.refDoct,
-      consultant: payload.consultant,
-      uuid: payload.regNo,
-      patientType: "registered",
-      discountedBy: "system",
-      postedBy: payload.servicedBy,
-      tubePrice: 0,
-    };
+      const orderPayload = {
+        tests,
+        totalPrice,
+        cashDiscount: 0,
+        parcentDiscount: 0,
+        deliveryTime: new Date(),
+        status: "pending",
+        dueAmount: 0,
+        paid: 0,
+        vat: 0,
+        refBy: payload.refDoct,
+        consultant: payload.consultant,
+        uuid: payload.uuid,
+        remarks: payload.regNo,
+        patientType: payload.patientType,
+        discountedBy: "system",
+        postedBy: payload.servicedBy,
+        tubePrice: 0,
+        patient: payload.patient,
+      };
 
-    await axios.post(`${config.backend_url}/order`, orderPayload, {
-      headers: {
-        Authorization: token, 
-      },
+      console.log(investigationServices, "int");
 
-      withCredentials: true,
-    });
+      await axios.post(`${config.backend_url}/order`, orderPayload, {
+        headers: {
+          Authorization: token,
+        },
+        withCredentials: true,
+      });
+    }
 
     // ? end
 
@@ -862,9 +876,6 @@ const addServicesToPatientIntoDB = async (
     const updated = await Admission.updateOne({ regNo }, updateData, {
       session,
     });
-
-    // If you want to post a journal entry after successful DB ops,
-    // move it **after commitTransaction()**
 
     await session.commitTransaction();
     session.endSession();

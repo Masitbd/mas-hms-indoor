@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -27,6 +38,7 @@ const axios_1 = __importDefault(require("axios"));
 const config_1 = require("../../config");
 const createAdmissionIntoDB = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
+    console.log(payload, "payload");
     const session = yield mongoose_1.default.startSession(); // Start transaction session
     session.startTransaction();
     try {
@@ -54,7 +66,8 @@ const createAdmissionIntoDB = (payload) => __awaiter(void 0, void 0, void 0, fun
         const createPayment = yield payment_model_1.Payment.create([paymentPayload], { session });
         payload.regNo = regNo;
         payload.paymentId = createPayment[0]._id;
-        const result = yield admission_model_1.Admission.create([Object.assign({}, payload)], { session });
+        const { _id, createdAt, updatedAt } = payload, cleanPayload = __rest(payload, ["_id", "createdAt", "updatedAt"]);
+        const result = yield admission_model_1.Admission.create([Object.assign({}, cleanPayload)], { session });
         yield bed_model_1.Bed.findByIdAndUpdate(payload.allocatedBed, { isAllocated: true }, { new: true, session });
         yield session.commitTransaction();
         session.endSession();
@@ -301,6 +314,11 @@ const getAdmissionInfoFromDB = (id) => __awaiter(void 0, void 0, void 0, functio
                 admissionDate: { $first: "$admissionDate" },
                 admissionTime: { $first: "$admissionTime" },
                 regNo: { $first: "$regNo" },
+                age: { $first: "$age" },
+                patientType: { $first: "$patientType" },
+                uuid: { $first: "$uuid" },
+                gender: { $first: "$gender" },
+                address: { $first: "$presentAddress" },
                 assignDoct: { $first: "$assignDoct" },
                 refDoct: { $first: "$refDoct" },
                 name: { $first: "$name" },
@@ -642,48 +660,49 @@ const addServicesToPatientIntoDB = (payload, token) => __awaiter(void 0, void 0,
         }
         // ! added call order id here
         const investigationServices = services === null || services === void 0 ? void 0 : services.filter((s) => s.serviceCategory === "investigation");
-        // Create `tests` array in your required format
-        const tests = investigationServices === null || investigationServices === void 0 ? void 0 : investigationServices.map((s, index) => ({
-            SL: index + 1,
-            test: s.serviceId, // or s.serviceId
-            status: "pending",
-            discount: s.discount || 0,
-            deliveryTime: null,
-            remark: "",
-        }));
-        // Calculate totalPrice from those services
-        const totalPrice = investigationServices === null || investigationServices === void 0 ? void 0 : investigationServices.reduce((sum, s) => sum + (s.amount || 0), 0);
-        const orderPayload = {
-            tests,
-            totalPrice,
-            cashDiscount: 0,
-            parcentDiscount: 0,
-            deliveryTime: new Date(),
-            status: "pending",
-            dueAmount: 0,
-            paid: 0,
-            vat: 0,
-            refBy: payload.refDoct,
-            consultant: payload.consultant,
-            uuid: payload.regNo,
-            patientType: "registered",
-            discountedBy: "system",
-            postedBy: payload.servicedBy,
-            tubePrice: 0,
-        };
-        yield axios_1.default.post(`${config_1.config.backend_url}/order`, orderPayload, {
-            headers: {
-                Authorization: token, // <-- your token here
-            },
-            withCredentials: true,
-        });
+        if (investigationServices && investigationServices.length > 0) {
+            const tests = investigationServices.map((s, index) => ({
+                SL: index + 1,
+                test: s.serviceId,
+                status: "pending",
+                discount: s.discount || 0,
+                deliveryTime: null,
+                remark: "",
+            }));
+            const totalPrice = investigationServices.reduce((sum, s) => sum + (s.amount || 0), 0);
+            const orderPayload = {
+                tests,
+                totalPrice,
+                cashDiscount: 0,
+                parcentDiscount: 0,
+                deliveryTime: new Date(),
+                status: "pending",
+                dueAmount: 0,
+                paid: 0,
+                vat: 0,
+                refBy: payload.refDoct,
+                consultant: payload.consultant,
+                uuid: payload.uuid,
+                remarks: payload.regNo,
+                patientType: payload.patientType,
+                discountedBy: "system",
+                postedBy: payload.servicedBy,
+                tubePrice: 0,
+                patient: payload.patient,
+            };
+            console.log(investigationServices, "int");
+            yield axios_1.default.post(`${config_1.config.backend_url}/order`, orderPayload, {
+                headers: {
+                    Authorization: token,
+                },
+                withCredentials: true,
+            });
+        }
         // ? end
         // Update Admission
         const updated = yield admission_model_1.Admission.updateOne({ regNo }, updateData, {
             session,
         });
-        // If you want to post a journal entry after successful DB ops,
-        // move it **after commitTransaction()**
         yield session.commitTransaction();
         session.endSession();
         // await journalEntryService.postJournalEntryForServiceAdd({

@@ -28,7 +28,7 @@ const auth = (...requiredPermissions) => (req, res, next) => __awaiter(void 0, v
         // verify token
         let verifiedUser = null;
         verifiedUser = jwtHelpers_1.jwtHelpers.verifyToken(token, config_1.config.jwt.secret);
-        req.user = verifiedUser; // role  , userid
+        req.user = verifiedUser;
         req.token = token;
         if ((_a = verifiedUser === null || verifiedUser === void 0 ? void 0 : verifiedUser.permissions) === null || _a === void 0 ? void 0 : _a.includes(userPermissions_1.ENUM_USER_PEMISSION.SUPER_ADMIN)) {
             next();

@@ -99,6 +99,8 @@ const admissionSchema = new mongoose_1.Schema({
     fixedBill: { type: mongoose_1.Schema.Types.ObjectId, ref: "PackageItem" },
     authorPerson: { type: String },
     receivedBy: { type: String, required: true },
+    patientType: { type: String },
+    uuid: { type: String },
 }, {
     timestamps: true,
 });
