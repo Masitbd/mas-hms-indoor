@@ -42,6 +42,16 @@ const deletePackage = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getSinglePackage = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await packageServices.getSinglePackage(id);
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "Retrieved Successfully",
+    data: result,
+  });
+});
 //
 
 export const packageController = {
@@ -49,4 +59,5 @@ export const packageController = {
   getAllPackage,
   updatePackage,
   deletePackage,
+  getSinglePackage,
 };

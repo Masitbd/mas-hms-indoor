@@ -13,14 +13,14 @@ const getAllBedWorldFromDB = () => {
 
 // get by id
 
-const getBedWorldByIdFromDB = (id: string) => {
-  return BedWorld.findById(id);
+const getBedWorldByIdFromDB = async (id: string) => {
+  return await BedWorld.findById(id);
 };
 
 // update
 
-const updateBedWorldIntoDB = (id: string, payload: Partial<TWorld>) => {
-  return BedWorld.findByIdAndUpdate(id, payload, {
+const updateBedWorldIntoDB = async (id: string, payload: Partial<TWorld>) => {
+  return await BedWorld.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
   });

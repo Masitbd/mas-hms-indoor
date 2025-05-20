@@ -15,9 +15,14 @@ const deletePackageFromDB = async (id: string) => {
   return await PackageItem.findByIdAndDelete(id);
 };
 
+const getSinglePackage = async (id: string) => {
+  return await PackageItem.findById(id);
+};
+
 export const packageServices = {
   createPackageIntoDB,
   getAllPackageFromDB,
   updatePackageIntoDB,
   deletePackageFromDB,
+  getSinglePackage,
 };
