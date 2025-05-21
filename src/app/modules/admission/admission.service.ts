@@ -47,7 +47,6 @@ interface AddServicePayload {
 }
 
 const createAdmissionIntoDB = async (payload: any) => {
-  console.log(payload, "payload");
   const session = await mongoose.startSession(); // Start transaction session
   session.startTransaction();
 
@@ -284,7 +283,8 @@ const getAdmissionInfoFromDB = async (id: string) => {
       $addFields: {
         totalAmount: {
           $cond: {
-            if: { $ne: ["$packageItemInfo", {}] },
+            if: { $ifNull: ["$packageItemInfo.price", false] },
+
             then: "$packageItemInfo.price",
             else: {
               $subtract: [
