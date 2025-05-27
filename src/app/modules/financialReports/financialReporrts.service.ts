@@ -1262,6 +1262,7 @@ const getPatientDoctorBillsFromDB = async (id: string) => {
         assignDoct: { $first: "$doctInfo.name" },
         refDoct: { $first: "$refDoct.code" },
         createdAt: "$services.createdAt",
+        totalAmount: { $multiply: ["$services.quantity", "$services.amount"] },
       },
     },
   ]);
