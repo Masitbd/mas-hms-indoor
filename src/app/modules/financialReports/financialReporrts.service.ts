@@ -868,7 +868,6 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
   // aggregate pipleline
 
   const pipleLine: PipelineStage[] = [
-    // mathc
     {
       $match: {
         _id: new mongoose.Types.ObjectId(id),
@@ -1040,6 +1039,19 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
     {
       $unwind: { path: "$paymentInfo", preserveNullAndEmptyArrays: true },
     },
+    // ! fixed bill generate
+    {
+      $lookup: {
+        from: "packageitems",
+        localField: "fixedBill",
+        foreignField: "_id",
+        as: "fixedBillInfo",
+      },
+    },
+
+    {
+      $unwind: { path: "$fixedBillInfo", preserveNullAndEmptyArrays: true },
+    },
 
     {
       $group: {
@@ -1050,7 +1062,7 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
             serviceAmount: "$services.amount",
             quantity: "$services.quantity",
             name: "$testInfo.label",
-            total: "$services.amount",
+            total: { $multiply: ["$services.quantity", "$services.amount"] },
           },
         },
         general: { $first: "$worldInfo.charge" },
@@ -1067,6 +1079,7 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
         assignDoct: { $first: "$doctInfo.name" },
         refDoct: { $first: "$refDoct.code" },
         totalPaid: { $first: "$paymentInfo.totalPaid" },
+        fixedBillInfo: { $first: "$fixedBillInfo" },
       },
     },
 
@@ -1093,6 +1106,7 @@ const getPatientHospitalBillDetailsFromDB = async (id: string) => {
         bedCharge: { $first: "$bedCharge" },
         assignDoct: { $first: "$assignDoct" },
         refDoct: { $first: "$refDoct" },
+        fixedBillInfo: { $first: "$fixedBillInfo" },
       },
     },
   ];
