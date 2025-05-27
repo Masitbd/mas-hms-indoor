@@ -801,6 +801,20 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
       },
     },
 
+    // ! fixed Bill
+    {
+      $lookup: {
+        from: "packageitems",
+        localField: "fixedBill",
+        foreignField: "_id",
+        as: "fixedBillInfo",
+      },
+    },
+
+    {
+      $unwind: { path: "$fixedBillInfo", preserveNullAndEmptyArrays: true },
+    },
+
     // service unwind
 
     {
@@ -814,7 +828,10 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
     {
       $group: {
         _id: "$services.serviceCategory",
-        serviceTotal: { $sum: "$services.amount" },
+        serviceTotal: {
+          $sum: { $multiply: ["$services.quantity", "$services.amount"] },
+        },
+
         general: { $first: "$worldInfo.charge" },
         regNo: { $first: "$regNo" },
         name: { $first: "$name" },
@@ -828,6 +845,7 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
         assignDoct: { $first: "$doctInfo.name" },
         refDoct: { $first: "$refDoct.code" },
         totalPaid: { $first: "$paymentInfo.totalPaid" },
+        fixedBillInfo: { $first: "$fixedBillInfo" },
       },
     },
 
@@ -855,6 +873,7 @@ const getPatientHospitalBillSummeryFromDB = async (id: string) => {
         assignDoct: { $first: "$assignDoct" },
         refDoct: { $first: "$refDoct" },
         totalPaid: { $first: "$totalPaid" },
+        fixedBillInfo: { $first: "$fixedBillInfo" },
       },
     },
   ];
